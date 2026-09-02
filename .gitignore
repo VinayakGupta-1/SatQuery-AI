@@ -1,0 +1,84 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ---------- Virtual environments ----------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- Testing / coverage ----------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+gee-key*.json
+
+# ---------- Node / frontend ----------
+node_modules/
+.next/
+out/
+.vite/
+.parcel-cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Data / model artifacts ----------
+data/
+datasets/
+uploads/
+outputs/
+checkpoints/
+*.tif
+*.tiff
+*.geotiff
+*.nc
+*.hdf
+*.h5
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# ---------- Logs / databases ----------
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# ---------- Editors / OS ----------
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/

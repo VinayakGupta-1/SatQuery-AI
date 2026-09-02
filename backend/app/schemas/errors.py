@@ -1,7 +1,5 @@
 from enum import Enum
-
 from pydantic import BaseModel, Field
-
 
 class ErrorCode(str, Enum):
     INVALID_FILE = "INVALID_FILE"

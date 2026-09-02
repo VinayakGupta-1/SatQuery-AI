@@ -12,11 +12,10 @@ def validate_metadata(
 ) -> list[ValidationIssue]:
 
     issues = []
-
     for image in images:
-
+        
         metadata = image.metadata
-
+        
         if requirements.requires_metadata and metadata is None:
             issues.append(
                 ValidationIssue(
@@ -28,7 +27,7 @@ def validate_metadata(
                 )
             )
             continue
-
+        
         if metadata is None:
             continue
 
