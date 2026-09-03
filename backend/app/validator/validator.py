@@ -1,6 +1,19 @@
 from app.schemas.errors import ErrorCode, ValidationIssue, ValidationResult
 from app.schemas.inputs import ImageInput
 from app.schemas.task import InputRequirements
+from app.tools.raster.bands import canonical_name, normalise
+
+
+def _band_key(name: str) -> str:
+    """Reduce a band name to a form that can be compared across vocabularies.
+
+    A requirement for "swir" and an image reporting "swir1" name the same
+    band, as do "red" and "B4". Comparing the raw strings would reject valid
+    imagery, so both sides are reduced to their canonical logical name first.
+    Names with no known mapping fall back to a normalised literal comparison,
+    which keeps unknown bands checkable rather than silently accepted.
+    """
+    return canonical_name(name) or normalise(name)
 
 
 def validate_inputs(
@@ -78,7 +91,7 @@ def validate_inputs(
 
     # 6. Required spectral bands validation
     if requirements.required_bands:
-        required_bands = {band.strip().lower() for band in requirements.required_bands}
+        required_bands = {_band_key(band): band for band in requirements.required_bands}
         for image in images:
             if image.metadata is None:
                 errors.append(ValidationIssue(
@@ -87,13 +100,17 @@ def validate_inputs(
                     field=f"images.{image.id}.metadata",
                 ))
                 continue
-            available_bands = {band.strip().lower() for band in image.metadata.bands}
-            missing_bands = required_bands - available_bands
+            available_bands = {_band_key(band) for band in image.metadata.bands}
+            missing_bands = sorted(
+                name
+                for key, name in required_bands.items()
+                if key not in available_bands
+            )
             if missing_bands:
                 errors.append(ValidationIssue(
                     code=ErrorCode.INVALID_PARAMETER,
                     message=(f"Image '{image.id}' is missing required band(s): "
-                             f"{sorted(missing_bands)}."),
+                             f"{missing_bands}."),
                     field=f"images.{image.id}.metadata.bands",
                 ))
 

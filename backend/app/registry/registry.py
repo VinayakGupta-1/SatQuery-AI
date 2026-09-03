@@ -27,6 +27,23 @@ class ToolDefinition(BaseModel):
     enabled: bool = True
 
 
+# Parameters every normalised-difference index tool accepts. ``scale`` and
+# ``offset`` convert digital numbers to reflectance: a normalised difference is
+# invariant under a shared scale but *not* under an additive offset, so
+# Sentinel-2 baseline 04.00 products must pass their BOA_ADD_OFFSET here.
+INDEX_COMMON_PARAMETERS: dict[str, str] = {
+    "scale": "float",
+    "offset": "float",
+    "sensor": "str",
+    "write_raster": "bool",
+    # Cloud/QA masking. Naming a mask band (Sentinel-2 "SCL", Landsat
+    # "QA_PIXEL") excludes cloud, shadow and defective pixels, without which
+    # an index averaged over a cloudy scene is confidently wrong.
+    "mask_band": "str",
+    "mask_invalid_values": "str",
+}
+
+
 # ============================================================
 # REGISTERED TOOLS
 # ============================================================
@@ -39,6 +56,7 @@ TOOLS: list[ToolDefinition] = [
         parameters={
             "red_band": "str",
             "nir_band": "str",
+            **INDEX_COMMON_PARAMETERS,
         },
     ),
     ToolDefinition(
@@ -46,12 +64,22 @@ TOOLS: list[ToolDefinition] = [
         description="Computes Normalized Difference Water Index from optical satellite imagery.",
         tool_type=ToolType.INDEX, supported_modalities=["optical"],
         required_bands=["green", "nir"], min_images=1, max_images=1,
+        parameters={
+            "green_band": "str",
+            "nir_band": "str",
+            **INDEX_COMMON_PARAMETERS,
+        },
     ),
     ToolDefinition(
         tool_id="ndbi", name="NDBI",
         description="Computes Normalized Difference Built-up Index from optical satellite imagery.",
         tool_type=ToolType.INDEX, supported_modalities=["optical"],
         required_bands=["nir", "swir"], min_images=1, max_images=1,
+        parameters={
+            "nir_band": "str",
+            "swir_band": "str",
+            **INDEX_COMMON_PARAMETERS,
+        },
     ),
     ToolDefinition(
         tool_id="satellite_vqa", name="Satellite Visual Question Answering",
@@ -70,6 +98,11 @@ TOOLS: list[ToolDefinition] = [
         description="Detects objects of interest in satellite imagery.",
         tool_type=ToolType.OBJECT_DETECTION, supported_modalities=["optical"],
         min_images=1, max_images=1,
+        parameters={
+            # Resolved from the understood query by the parameter configurator.
+            "target_objects": "list",
+            "confidence_threshold": "float",
+        },
     ),
     ToolDefinition(
         tool_id="change_detection", name="Bi-Temporal Change Detection",
@@ -77,6 +110,20 @@ TOOLS: list[ToolDefinition] = [
         tool_type=ToolType.CHANGE_DETECTION,
         supported_modalities=["optical", "sar"], min_images=2, max_images=2,
         requires_temporal_pair=True,
+        parameters={
+            # Which spectral index is differenced between the two dates.
+            "index": "str",
+            # Band overrides for whichever index is chosen.
+            "red_band": "str",
+            "nir_band": "str",
+            "green_band": "str",
+            "swir_band": "str",
+            # How large a difference has to be before it counts as change.
+            "threshold": "float",
+            "threshold_method": "str",
+            "sigma_multiplier": "float",
+            **INDEX_COMMON_PARAMETERS,
+        },
     ),
     ToolDefinition(
         tool_id="sar_analysis", name="SAR Analysis",

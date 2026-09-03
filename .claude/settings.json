@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(../.venv/Scripts/python.exe -m pip install numpy)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_raster_io.py -q)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_ndvi.py -q)",
+      "Bash(../.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_pipeline_end_to_end.py -q)",
+      "Bash(../.venv/Scripts/python.exe -c ' *)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_result_integration.py -q)",
+      "Bash(../.venv/Scripts/python.exe -c \"from app.tools.raster.io import backend_report; print\\(backend_report\\(\\)\\)\")",
+      "Bash(../.venv/Scripts/python.exe -m pip install rasterio)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_raster_backends.py -q)",
+      "Bash(SATQUERY_RASTER_BACKEND=builtin ../.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(../.venv/Scripts/python.exe -m pip install fastapi \"uvicorn[standard]\" python-multipart httpx)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_change_detection.py -q)"
+    ]
+  }
+}

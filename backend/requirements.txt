@@ -1,0 +1,30 @@
+# SatQuery AI -- backend dependencies
+#
+# Install:  pip install -r requirements.txt
+# Run API:  uvicorn app.main:app --reload
+# Tests:    python -m pytest
+
+# ---- core ----
+pydantic>=2.0
+
+# ---- raster processing ----
+# numpy vectorises the index arithmetic. Without it the tools still return
+# identical results via a pure-Python path, but a full Sentinel-2 tile goes
+# from seconds to minutes.
+numpy>=1.26
+
+# rasterio brings GDAL: compressed and tiled GeoTIFF, JPEG2000 Sentinel-2
+# products, overviews, full CRS handling. Without it, the dependency-free
+# codec in app/tools/raster/tiff.py reads and writes uncompressed baseline
+# GeoTIFF, so the system still runs. Set SATQUERY_RASTER_BACKEND=builtin to
+# force that path even when rasterio is installed.
+rasterio>=1.3
+
+# ---- HTTP API ----
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9   # required for multipart file uploads
+
+# ---- tests ----
+pytest>=8.0
+httpx>=0.27               # required by fastapi.testclient

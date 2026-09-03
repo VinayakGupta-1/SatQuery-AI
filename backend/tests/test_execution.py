@@ -12,11 +12,12 @@ def orchestrator():
     return ExecutionOrchestrator()
 
 
-def test_valid_execution(orchestrator):
+def test_valid_execution(orchestrator, sentinel2_scene, tmp_path):
     request = ExecutionRequest(
         tool_id="ndvi",
         parameters={},
-        input_references=["image_001.tif"],
+        input_references=[sentinel2_scene],
+        output_directory=str(tmp_path / "outputs"),
     )
 
     result = orchestrator.execute(request)
@@ -120,20 +121,20 @@ def test_unknown_parameter(orchestrator):
     assert result.error is not None
 
 
-def test_execution_metadata(orchestrator):
+def test_execution_metadata(orchestrator, sentinel2_scene, tmp_path):
     request = ExecutionRequest(
         tool_id="ndvi",
-        input_references=[
-            "image_001.tif",
-            "image_002.tif",
-        ],
+        input_references=[sentinel2_scene],
+        output_directory=str(tmp_path / "outputs"),
     )
 
     result = orchestrator.execute(request)
 
     assert result.status == "completed"
     assert result.execution_metadata["tool_name"] == "NDVI"
-    assert result.execution_metadata["input_count"] == 2
+    assert result.execution_metadata["tool_type"] == "index"
+    assert result.execution_metadata["input_count"] == 1
+    assert result.execution_metadata["result_type"] == "raster_index"
 
 
 def test_execution_failure_is_captured(orchestrator, monkeypatch):
@@ -162,20 +163,81 @@ def test_invalid_request_type(orchestrator):
         orchestrator.execute("invalid")
 
 
-def test_execution_output_contains_request_data(orchestrator):
+def test_execution_output_carries_the_real_result(
+    orchestrator, sentinel2_scene, tmp_path
+):
     request = ExecutionRequest(
         tool_id="ndvi",
         parameters={
             "red_band": "B4",
             "nir_band": "B8",
         },
-        input_references=["image_001.tif"],
+        input_references=[sentinel2_scene],
+        output_directory=str(tmp_path / "outputs"),
     )
 
-    # NDVI currently has these parameters registered.
     result = orchestrator.execute(request)
 
     assert result.status == "completed"
     assert result.output["tool_id"] == "ndvi"
-    assert result.output["parameters"]["red_band"] == "B4"
-    assert result.output["parameters"]["nir_band"] == "B8"
+    assert result.output["result_type"] == "raster_index"
+    assert result.output["data"]["formula"] == "(B8 - B4) / (B8 + B4)"
+    assert result.output["statistics"]["mean"] == pytest.approx(0.2)
+
+
+# ============================================================
+# REGISTRY POLICY ENFORCED BEFORE EXECUTION
+# ============================================================
+def test_too_many_inputs_are_blocked(orchestrator, sentinel2_scene):
+    # NDVI declares max_images = 1 in the registry.
+    request = ExecutionRequest(
+        tool_id="ndvi",
+        input_references=[sentinel2_scene, sentinel2_scene],
+    )
+
+    result = orchestrator.execute(request)
+
+    assert result.status == "blocked"
+    assert "between 1 and 1" in result.error
+
+
+def test_too_few_inputs_are_blocked(orchestrator, sentinel2_scene):
+    # Change detection declares min_images = 2.
+    request = ExecutionRequest(
+        tool_id="change_detection",
+        input_references=[sentinel2_scene],
+    )
+
+    result = orchestrator.execute(request)
+
+    assert result.status == "blocked"
+    assert "between 2 and 2" in result.error
+
+
+def test_registered_tool_without_an_implementation_is_blocked(
+    orchestrator, sentinel2_scene
+):
+    # The tool is a legitimate registry entry, but nothing is bound to it yet.
+    # It must report that honestly rather than return a placeholder result.
+    request = ExecutionRequest(
+        tool_id="satellite_vqa",
+        input_references=[sentinel2_scene],
+    )
+
+    result = orchestrator.execute(request)
+
+    assert result.status == "blocked"
+    assert "no execution implementation" in result.error
+    assert result.output is None
+
+
+def test_a_failing_tool_reports_the_underlying_reason(orchestrator, tmp_path):
+    request = ExecutionRequest(
+        tool_id="ndvi",
+        input_references=[str(tmp_path / "does_not_exist.tif")],
+    )
+
+    result = orchestrator.execute(request)
+
+    assert result.status == "failed"
+    assert "not found" in result.error

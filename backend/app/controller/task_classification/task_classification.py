@@ -47,6 +47,7 @@ class TaskClassifier:
             "change_detection": "change_detection",
             "ndvi": "index_analysis",
             "ndwi": "index_analysis",
+            "ndbi": "index_analysis",
             "object_detection": "object_detection",
             "segmentation": "segmentation",
             "classification": "scene_classification",

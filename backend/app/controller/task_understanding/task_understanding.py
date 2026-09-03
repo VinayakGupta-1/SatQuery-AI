@@ -93,6 +93,24 @@ class TaskUnderstanding:
                 ):
                     return "ndwi"
 
+        # Built-up index. Checked before object detection because these
+        # phrases ask for the *extent* of built-up land, which is an index
+        # task, rather than for discrete building objects.
+        if any(
+            keyword in query
+            for keyword in [
+                "ndbi",
+                "built-up",
+                "built up",
+                "builtup",
+                "built-up index",
+                "impervious",
+                "urban index",
+                "urban expansion",
+            ]
+        ):
+            return "ndbi"
+
         if any(
                         keyword in query
                         for keyword in [

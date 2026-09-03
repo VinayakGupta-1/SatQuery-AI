@@ -49,7 +49,11 @@ class InputRequirementsResolver:
         return InputRequirements(task_category="change_detection", required_inputs=["image_1", "image_2"], minimum_image_count=2, required_modalities=["compatible_modality"], requires_metadata=True, requires_crs=True, requires_temporal_information=True, compatibility_requirements=["spatial reference systems must be compatible", "spatial coverage must be compatible", "temporal ordering must be valid", "image modalities must be compatible"])
 
     def _index_analysis_requirements(self, understanding: TaskUnderstandingResult) -> InputRequirements:
-        bands = ["red", "nir"] if understanding.task_type == "ndvi" else ["green", "nir"] if understanding.task_type == "ndwi" else ["required_spectral_bands"]
+        bands = {
+            "ndvi": ["red", "nir"],
+            "ndwi": ["green", "nir"],
+            "ndbi": ["nir", "swir"],
+        }.get(understanding.task_type, ["required_spectral_bands"])
         return InputRequirements(task_category="index_analysis", required_inputs=["satellite_image"], minimum_image_count=1, required_modalities=["optical"], required_bands=bands, requires_metadata=True, requires_crs=True, compatibility_requirements=["required spectral bands must be available"])
 
     def _object_detection_requirements(self) -> InputRequirements:
