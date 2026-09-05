@@ -22,6 +22,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.agent import QueryAgent, to_task_understanding
+from app.agents.schemas import GuardDecision
+from app.config.logging_config import get_logger
 from app.controller.execution.orchestrator import (
     ExecutionOrchestrator,
     ExecutionRequest,
@@ -53,6 +56,8 @@ from app.schemas.inputs import ImageInput
 from app.schemas.results import FinalResult
 from app.validator.validator import validate_inputs
 
+logger = get_logger("pipeline")
+
 
 class PipelineRun(BaseModel):
     """Everything the pipeline produced, stage by stage.
@@ -66,6 +71,10 @@ class PipelineRun(BaseModel):
 
     task_id: str
     query: str
+    #: What the understanding layer proposed and what the guard allowed. The
+    #: proposal is recorded even when it was overruled, so the audit trail
+    #: shows the refusal rather than hiding it.
+    agent: GuardDecision | None = None
     understanding: TaskUnderstandingResult
     classification: TaskClassificationResult
     plan: TaskPlan
@@ -100,6 +109,46 @@ class PipelineRun(BaseModel):
             return "not_executed"
         return self.execution.status
 
+    @property
+    def status(self) -> str:
+        """Collapse ``outcome`` into the four states a frontend renders.
+
+        ``outcome`` stays precise for operators; this stays stable for the UI,
+        so adding an internal outcome never breaks the frontend contract.
+        """
+        outcome = self.outcome
+        if outcome == "completed":
+            return "success"
+        if outcome == "rejected":
+            return "validation_error"
+        # ``blocked`` means registry policy refused before any computation --
+        # most often because the selected capability has no implementation
+        # bound. That is a gap in what the system can do, not a failure of the
+        # run, so the user is asked for something it *can* do rather than
+        # shown an error.
+        if outcome in {"requires_clarification", "needs_input", "blocked", "not_executed"}:
+            return "needs_clarification"
+        return "execution_error"
+
+    @property
+    def clarification(self) -> str | None:
+        """The question to put back to the user, when one is needed."""
+        if self.status != "needs_clarification":
+            return None
+        if self.agent is not None and self.agent.plan.clarification:
+            return self.agent.plan.clarification
+        if self.selection.status != "selected":
+            return self.selection.selection_reason or (
+                "The request could not be matched to an available capability."
+            )
+        if self.execution is not None and self.execution.status == "blocked":
+            # The orchestrator's message names the capability and lists what
+            # can actually run, which is exactly what the user needs.
+            return self.execution.error
+        if self.configuration is not None and self.configuration.status == "needs_input":
+            return "More information is required before this task can run."
+        return "More information is required before this task can run."
+
     def stage_status(self) -> dict[str, str]:
         """Summarise how far the run got, for diagnostics and the API."""
         return {
@@ -118,7 +167,10 @@ class PipelineRun(BaseModel):
 class SatQueryPipeline:
     """Runs a natural-language query against a set of images."""
 
-    def __init__(self) -> None:
+    def __init__(self, agent: QueryAgent | None = None) -> None:
+        #: Interprets the sentence. Its output is guarded before use and can
+        #: never reach execution without passing the validator.
+        self.agent = agent or QueryAgent()
         self.understanding = TaskUnderstanding()
         self.classifier = TaskClassifier()
         self.planner = Planner()
@@ -139,8 +191,10 @@ class SatQueryPipeline:
         """Run every stage in order and return the complete record."""
         task_id = task_id or f"task_{uuid.uuid4().hex[:12]}"
 
-        # Stages 1-4: interpret the request.
-        understanding = self.understanding.understand(query)
+        # Stages 1-4: interpret the request. The agent proposes; the guard
+        # has already stripped anything the registry does not sanction.
+        decision = self.agent.understand(query)
+        understanding = to_task_understanding(decision.plan, query)
         classification = self.classifier.classify(understanding)
         plan = self.planner.create_plan(understanding, classification)
         requirements = self.requirements.resolve(understanding, classification, plan)
@@ -192,9 +246,20 @@ class SatQueryPipeline:
             configuration=configuration,
         )
 
+        logger.info(
+            "task complete",
+            extra={
+                "task_id": task_id,
+                "status": final_status(validation, selection, configuration, execution),
+                "tool": selection.selected_tool_id,
+                "images": len(images),
+            },
+        )
+
         return PipelineRun(
             task_id=task_id,
             query=query,
+            agent=decision,
             understanding=understanding,
             classification=classification,
             plan=plan,
@@ -207,4 +272,21 @@ class SatQueryPipeline:
         )
 
 
-__all__ = ["PipelineRun", "SatQueryPipeline"]
+def final_status(validation, selection, configuration, execution) -> str:
+    """Derive the coarse status without building a ``PipelineRun`` first."""
+    if not validation.valid:
+        return "validation_error"
+    if selection.status != "selected":
+        return "needs_clarification"
+    if configuration is not None and configuration.status == "needs_input":
+        return "needs_clarification"
+    if execution is None:
+        return "needs_clarification"
+    if execution.status == "completed":
+        return "success"
+    if execution.status == "blocked":
+        return "needs_clarification"
+    return "execution_error"
+
+
+__all__ = ["PipelineRun", "SatQueryPipeline", "final_status"]

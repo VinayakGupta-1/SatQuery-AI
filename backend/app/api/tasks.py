@@ -21,10 +21,17 @@ from app.api.responses import (
     build_validation_response,
     collect_artifacts,
 )
-from app.api.schemas import ImageSummary, TaskListEntry, TaskResponse, ValidationResponse
+from app.api.schemas import (
+    ImageSummary,
+    TaskListEntry,
+    TaskResponse,
+    TaskStatus,
+    ValidationResponse,
+)
 from app.api.store import TaskRecord, task_store
 from app.config.settings import get_settings
 from app.controller.pipeline import SatQueryPipeline
+from app.storage.artifacts import get_artifact_store
 from app.schemas.inputs import ImageInput
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -137,7 +144,7 @@ async def create_task(
         query=query.strip(),
         images=images,
         task_id=task_id,
-        output_directory=settings.task_output_directory(task_id),
+        output_directory=get_artifact_store().output_directory(task_id),
         user_parameters=user_parameters or None,
     )
 
@@ -187,6 +194,7 @@ def list_tasks(limit: int = 50) -> list[TaskListEntry]:
         TaskListEntry(
             task_id=record.run.task_id,
             query=record.run.query,
+            status=TaskStatus(record.run.status),
             outcome=record.run.outcome,
             answer=record.run.final.answer,
         )
@@ -223,3 +231,30 @@ def download_artifact(task_id: str, artifact_id: str) -> FileResponse:
     return FileResponse(
         path, media_type="image/tiff", filename=os.path.basename(path)
     )
+
+
+# ============================================================
+# FRONTEND-FACING ALIASES
+# ============================================================
+# The same handlers, mounted at the names the frontend contract specifies.
+# They are aliases rather than reimplementations so the two can never drift:
+# there is exactly one code path per operation.
+analysis_router = APIRouter(tags=["analysis"])
+
+analysis_router.add_api_route(
+    "/analyze", create_task, methods=["POST"], response_model=TaskResponse,
+    summary="Run a natural-language analysis over uploaded imagery",
+)
+analysis_router.add_api_route(
+    "/analyze/validate", validate_task, methods=["POST"],
+    response_model=ValidationResponse,
+    summary="Check whether a request would run, without executing it",
+)
+analysis_router.add_api_route(
+    "/results/{task_id}", get_task, methods=["GET"], response_model=TaskResponse,
+    summary="Retrieve a completed result",
+)
+analysis_router.add_api_route(
+    "/results/{task_id}/artifacts/{artifact_id}", download_artifact, methods=["GET"],
+    summary="Download a raster produced by a result",
+)

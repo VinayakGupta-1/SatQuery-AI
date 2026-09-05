@@ -7,6 +7,11 @@
 # ---- core ----
 pydantic>=2.0
 
+# Reads backend/.env so configuration can live in a file instead of being
+# exported by hand. Optional at runtime: without it the backend still reads
+# everything from the environment.
+python-dotenv>=1.0
+
 # ---- raster processing ----
 # numpy vectorises the index arithmetic. Without it the tools still return
 # identical results via a pure-Python path, but a full Sentinel-2 tile goes

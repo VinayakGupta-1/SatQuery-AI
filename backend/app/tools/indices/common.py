@@ -138,15 +138,63 @@ def _nodata_mask(numpy: Any, values: Any, nodata: float) -> Any:
     return values == nodata
 
 
+#: Percentiles reported alongside the moments. The median is far more
+#: informative than the mean on an index raster -- a handful of cloud or water
+#: pixels drag the mean but not the median -- and the quartiles give a frontend
+#: enough to draw a distribution without shipping the whole band.
+PERCENTILES = (5.0, 25.0, 50.0, 75.0, 95.0)
+
+_EMPTY_SUMMARY: dict[str, Any] = {
+    "minimum": None,
+    "maximum": None,
+    "mean": None,
+    "standard_deviation": None,
+    "median": None,
+    "percentiles": {},
+}
+
+
+def _percentile_key(percentile: float) -> str:
+    return f"p{percentile:g}"
+
+
 def _summarise_numpy(numpy: Any, computed: Any) -> dict[str, Any]:
     if computed.size == 0:
-        return {"minimum": None, "maximum": None, "mean": None, "standard_deviation": None}
+        return dict(_EMPTY_SUMMARY)
+    # One partition pass for every percentile, rather than a sort per call.
+    values = numpy.percentile(computed, PERCENTILES)
+    percentiles = {
+        _percentile_key(p): float(value) for p, value in zip(PERCENTILES, values)
+    }
     return {
         "minimum": float(computed.min()),
         "maximum": float(computed.max()),
         "mean": float(computed.mean()),
         "standard_deviation": float(computed.std()),
+        "median": percentiles[_percentile_key(50.0)],
+        "percentiles": percentiles,
     }
+
+
+def _percentiles_from_sorted(values: list[float]) -> dict[str, float]:
+    """Linear-interpolation percentiles, matching numpy's default method.
+
+    Used only on the dependency-free path, so both raster backends report the
+    same statistics for the same input.
+    """
+    if not values:
+        return {}
+    last = len(values) - 1
+    result: dict[str, float] = {}
+    for percentile in PERCENTILES:
+        position = (percentile / 100.0) * last
+        lower = int(position)
+        upper = min(lower + 1, last)
+        weight = position - lower
+        result[_percentile_key(percentile)] = (
+            values[lower] * (1.0 - weight) + values[upper] * weight
+        )
+    return result
 
 
 def _compute_with_stdlib(
@@ -170,6 +218,10 @@ def _compute_with_stdlib(
     total_squares = 0.0
     minimum = None
     maximum = None
+    # Percentiles need the values themselves, not just running moments. Only
+    # computed pixels are kept, so this holds the valid subset rather than the
+    # whole raster.
+    computed_values: list[float] = []
 
     for index in range(size):
         if mask is not None and not mask[index]:
@@ -195,6 +247,7 @@ def _compute_with_stdlib(
         valid_count += 1
         total += value
         total_squares += value * value
+        computed_values.append(value)
         if minimum is None or value < minimum:
             minimum = value
         if maximum is None or value > maximum:
@@ -203,19 +256,17 @@ def _compute_with_stdlib(
     if valid_count:
         mean = total / valid_count
         variance = max(total_squares / valid_count - mean * mean, 0.0)
+        percentiles = _percentiles_from_sorted(sorted(computed_values))
         statistics: dict[str, Any] = {
             "minimum": minimum,
             "maximum": maximum,
             "mean": mean,
             "standard_deviation": math.sqrt(variance),
+            "median": percentiles.get(_percentile_key(50.0)),
+            "percentiles": percentiles,
         }
     else:
-        statistics = {
-            "minimum": None,
-            "maximum": None,
-            "mean": None,
-            "standard_deviation": None,
-        }
+        statistics = dict(_EMPTY_SUMMARY)
 
     statistics["valid_pixels"] = valid_count
     statistics["nodata_pixels"] = size - valid_count

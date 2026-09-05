@@ -162,3 +162,41 @@ def test_confidence_for_clear_query():
 
     assert result.confidence > 0.0
     assert result.confidence <= 1.0
+
+# ============================================================
+# CHANGE VERSUS THE SUBJECT OF CHANGE
+# ============================================================
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Compare these two images and identify vegetation change",
+        "Identify vegetation change between 2023 and 2025",
+        "Show me land cover change",
+        "Find change between these images",
+        "Measure change over time",
+        "Compare these images",
+    ],
+)
+def test_a_request_naming_the_subject_of_change_is_still_change_detection(query):
+    """"Vegetation change" is a comparison, not a vegetation index.
+
+    Without this the phrase falls through to NDVI, and a two-image upload is
+    then rejected for image count -- or worse, a single upload quietly returns
+    a vegetation index in answer to a question about change.
+    """
+    assert TaskUnderstanding().understand(query).task_type == "change_detection"
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("Calculate NDVI", "ndvi"),
+        ("Show vegetation health", "ndvi"),
+        ("vegetation index", "ndvi"),
+        ("Show me the water bodies", "ndwi"),
+        ("Find built-up area", "ndbi"),
+    ],
+)
+def test_plain_index_requests_are_not_captured_by_the_change_phrases(query, expected):
+    """The broader change matching must not swallow ordinary index requests."""
+    assert TaskUnderstanding().understand(query).task_type == expected

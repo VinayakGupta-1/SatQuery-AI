@@ -59,11 +59,16 @@ def raster_factory(tmp_path):
         sensor: str | None = "sentinel2",
         nodata: float | None = None,
         dtype: str | None = None,
+        metadata_extra: dict | None = None,
     ) -> str:
         path = str(tmp_path / filename)
         metadata = {"band_names": [band.name for band in bands]}
         if sensor:
             metadata["sensor"] = sensor
+        # Extra tags (an acquisition date, for instance) are written into the
+        # file too, so a scene uploaded on its own still describes itself.
+        if metadata_extra:
+            metadata.update(metadata_extra)
 
         # Band names and sensor go *into* the file, so the raster stays
         # self-describing when it is uploaded without its sidecar.

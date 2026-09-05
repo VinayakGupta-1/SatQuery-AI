@@ -1,8 +1,19 @@
-@"
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
+
+# Virtual environments
 .venv/
 venv/
+
+# Local configuration. NEVER commit a real .env -- it holds the API key.
+# .env.example is the template and IS committed.
 .env
-"@ | Out-File -Encoding utf8 .gitignore
+.env.*
+!.env.example
+
+# Generated output
+backend/outputs/
+*.tif.aux.xml

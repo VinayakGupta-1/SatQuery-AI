@@ -16,12 +16,15 @@ from app.tools.binding import has_implementation
 router = APIRouter(prefix="/api/tools", tags=["registry"])
 
 
-def _summarise(tool) -> ToolSummary:
+def summarise(tool) -> ToolSummary:
+    """Shape one registry entry for the API. Shared with /capabilities."""
     return ToolSummary(
         tool_id=tool.tool_id,
         name=tool.name,
         description=tool.description,
         tool_type=tool.tool_type.value,
+        version=tool.version,
+        output_type=tool.output_type.value,
         supported_modalities=list(tool.supported_modalities),
         required_bands=list(tool.required_bands),
         min_images=tool.min_images,
@@ -39,7 +42,7 @@ def list_tools(implemented_only: bool = False) -> list[ToolSummary]:
 
     Pass ``implemented_only=true`` to see only the tools that can actually run.
     """
-    tools = [_summarise(tool) for tool in get_all_tools()]
+    tools = [summarise(tool) for tool in get_all_tools()]
     if implemented_only:
         tools = [tool for tool in tools if tool.implemented]
     return tools
@@ -51,4 +54,4 @@ def read_tool(tool_id: str) -> ToolSummary:
     tool = get_tool(tool_id)
     if tool is None:
         raise HTTPException(404, f"No registered tool with id '{tool_id}'.")
-    return _summarise(tool)
+    return summarise(tool)

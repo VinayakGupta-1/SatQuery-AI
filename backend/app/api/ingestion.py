@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import os
 import re
-import uuid
 
 from app.api.schemas import ImageSummary
 from app.config.settings import Settings
+from app.storage.artifacts import StorageError, get_artifact_store
 from app.schemas.inputs import ImageInput, ImageMetadata
-from app.tools.raster.inspection import describe_raster
-from app.tools.raster.model import RasterError
+from app.tools.raster.inspection import describe_dataset
+from app.tools.raster.io import open_raster
+from app.tools.raster.model import RasterDataset, RasterError
 from app.tools.raster.scene import (
     SCENE_MANIFEST_SUFFIX,
     band_name_from_filename,
@@ -74,13 +75,13 @@ def store_upload(
             f"{settings.max_upload_bytes:,} byte limit."
         )
 
-    directory = settings.task_upload_directory(task_id)
-    os.makedirs(directory, exist_ok=True)
-
-    # The stored name is ours, never the client's.
-    stored = os.path.join(directory, f"{uuid.uuid4().hex}{extension}")
-    with open(stored, "wb") as handle:
-        handle.write(content)
+    # The storage layer owns the path entirely: the client's filename never
+    # becomes part of it, and the result is guaranteed to sit inside the
+    # configured storage root.
+    try:
+        stored = get_artifact_store().write_upload(task_id, content, extension)
+    except StorageError as error:
+        raise IngestionError(str(error)) from error
     return stored, display
 
 
@@ -108,7 +109,7 @@ def assemble_scene(
         metadata["sensor"] = sensor.strip()
 
     manifest = os.path.join(
-        settings.task_upload_directory(task_id), f"scene{SCENE_MANIFEST_SUFFIX}"
+        get_artifact_store().upload_directory(task_id), f"scene{SCENE_MANIFEST_SUFFIX}"
     )
     try:
         write_scene_manifest(manifest, bands, metadata=metadata)
@@ -117,12 +118,50 @@ def assemble_scene(
     return manifest
 
 
+def _spatial_extent(dataset: RasterDataset) -> tuple[list[float] | None, list[float] | None]:
+    """Return ``(resolution, bounds)`` for a dataset, when it is georeferenced."""
+    # A raster with no georeferencing still reports a transform under GDAL --
+    # the identity matrix. Deriving a resolution from that would claim
+    # one-unit pixels and an extent anchored at the origin, which is worse
+    # than reporting nothing. Only a genuinely georeferenced raster gets an
+    # extent.
+    if not dataset.georeference.is_georeferenced:
+        return None, None
+
+    transform = dataset.georeference.transform
+    if transform is None:
+        return None, None
+
+    origin_x, pixel_w, _, origin_y, _, pixel_h = transform
+    resolution = [abs(pixel_w), abs(pixel_h)]
+
+    # pixel_h is normally negative, so the far corner is computed rather than
+    # assumed, and the pairs are then ordered into (min, max).
+    far_x = origin_x + pixel_w * dataset.width
+    far_y = origin_y + pixel_h * dataset.height
+    bounds = [
+        min(origin_x, far_x),
+        min(origin_y, far_y),
+        max(origin_x, far_x),
+        max(origin_y, far_y),
+    ]
+    return resolution, bounds
+
+
 def describe_upload(path: str, image_id: str, display_name: str) -> tuple[ImageInput, ImageSummary]:
-    """Open a stored raster and describe it for the pipeline and the client."""
+    """Open a stored raster and describe it for the pipeline and the client.
+
+    The file is opened once and both descriptions are derived from that one
+    read: the minimal metadata the validator reasons about, and the fuller
+    geospatial summary a frontend needs to place the raster on a map.
+    """
     try:
-        metadata: ImageMetadata = describe_raster(path)
+        dataset = open_raster(path)
     except RasterError as error:
         raise IngestionError(f"'{display_name}' could not be read as a raster: {error}") from error
+
+    metadata: ImageMetadata = describe_dataset(dataset)
+    resolution, bounds = _spatial_extent(dataset)
 
     image = ImageInput(id=image_id, path=path, metadata=metadata)
     summary = ImageSummary(
@@ -130,7 +169,15 @@ def describe_upload(path: str, image_id: str, display_name: str) -> tuple[ImageI
         filename=display_name,
         width=metadata.width,
         height=metadata.height,
+        band_count=dataset.band_count,
+        dtype=dataset.dtype,
+        nodata=dataset.nodata,
         crs=metadata.crs,
+        transform=list(dataset.georeference.transform)
+        if dataset.georeference.is_georeferenced
+        else None,
+        resolution=resolution,
+        bounds=bounds,
         modality=metadata.modality,
         sensor=metadata.sensor,
         bands=metadata.bands,

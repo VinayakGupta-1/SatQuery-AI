@@ -13,11 +13,28 @@ class ToolType(str, Enum):
     SAR_ANALYSIS = "sar_analysis"
 
 
+class OutputType(str, Enum):
+    """What a tool hands back, so a frontend knows how to render it."""
+
+    RASTER_INDEX = "raster_index"
+    CHANGE_MAP = "change_map"
+    CLASSES = "classes"
+    DETECTIONS = "detections"
+    MASK = "mask"
+    TEXT = "text"
+
+
 class ToolDefinition(BaseModel):
     tool_id: str
     name: str
     description: str
     tool_type: ToolType
+    #: Semantic version of this capability's contract. It changes when the
+    #: inputs, parameters or output shape change, so a stored result can always
+    #: be traced to the contract that produced it.
+    version: str = "1.0.0"
+    #: The shape of the result, for the frontend.
+    output_type: OutputType = OutputType.RASTER_INDEX
     supported_modalities: list[str] = Field(default_factory=list)
     required_bands: list[str] = Field(default_factory=list)
     min_images: int = 1
@@ -49,7 +66,8 @@ INDEX_COMMON_PARAMETERS: dict[str, str] = {
 # ============================================================
 TOOLS: list[ToolDefinition] = [
     ToolDefinition(
-        tool_id="ndvi", name="NDVI",
+        tool_id="ndvi", name="NDVI", version="1.0.0",
+        output_type=OutputType.RASTER_INDEX,
         description="Computes Normalized Difference Vegetation Index from optical satellite imagery.",
         tool_type=ToolType.INDEX, supported_modalities=["optical"],
         required_bands=["red", "nir"], min_images=1, max_images=1,
@@ -60,7 +78,8 @@ TOOLS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
-        tool_id="ndwi", name="NDWI",
+        tool_id="ndwi", name="NDWI", version="1.0.0",
+        output_type=OutputType.RASTER_INDEX,
         description="Computes Normalized Difference Water Index from optical satellite imagery.",
         tool_type=ToolType.INDEX, supported_modalities=["optical"],
         required_bands=["green", "nir"], min_images=1, max_images=1,
@@ -71,7 +90,8 @@ TOOLS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
-        tool_id="ndbi", name="NDBI",
+        tool_id="ndbi", name="NDBI", version="1.0.0",
+        output_type=OutputType.RASTER_INDEX,
         description="Computes Normalized Difference Built-up Index from optical satellite imagery.",
         tool_type=ToolType.INDEX, supported_modalities=["optical"],
         required_bands=["nir", "swir"], min_images=1, max_images=1,
@@ -83,18 +103,21 @@ TOOLS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         tool_id="satellite_vqa", name="Satellite Visual Question Answering",
+        version="0.1.0", output_type=OutputType.TEXT,
         description="Answers natural-language questions about satellite imagery.",
         tool_type=ToolType.VQA, supported_modalities=["optical", "sar"],
         min_images=1, max_images=1,
     ),
     ToolDefinition(
         tool_id="land_cover_classification", name="Land Cover Classification",
+        version="0.1.0", output_type=OutputType.CLASSES,
         description="Classifies satellite imagery into land-cover categories.",
         tool_type=ToolType.CLASSIFICATION, supported_modalities=["optical"],
         min_images=1, max_images=1,
     ),
     ToolDefinition(
         tool_id="object_detection", name="Satellite Object Detection",
+        version="0.1.0", output_type=OutputType.DETECTIONS,
         description="Detects objects of interest in satellite imagery.",
         tool_type=ToolType.OBJECT_DETECTION, supported_modalities=["optical"],
         min_images=1, max_images=1,
@@ -106,6 +129,7 @@ TOOLS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         tool_id="change_detection", name="Bi-Temporal Change Detection",
+        version="1.0.0", output_type=OutputType.CHANGE_MAP,
         description="Detects changes between two satellite images acquired at different times.",
         tool_type=ToolType.CHANGE_DETECTION,
         supported_modalities=["optical", "sar"], min_images=2, max_images=2,
@@ -127,6 +151,7 @@ TOOLS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         tool_id="sar_analysis", name="SAR Analysis",
+        version="0.1.0", output_type=OutputType.RASTER_INDEX,
         description="Performs analysis on Synthetic Aperture Radar satellite imagery.",
         tool_type=ToolType.SAR_ANALYSIS, supported_modalities=["sar"],
         min_images=1, max_images=1,
@@ -148,6 +173,12 @@ def get_tool(tool_id: str) -> ToolDefinition | None:
         if tool.tool_id == tool_id:
             return tool
     return None
+
+
+def get_tool_version(tool_id: str) -> str | None:
+    """Return the contract version of ``tool_id``, or ``None`` if unknown."""
+    tool = get_tool(tool_id)
+    return tool.version if tool else None
 
 
 def get_enabled_tools() -> list[ToolDefinition]:

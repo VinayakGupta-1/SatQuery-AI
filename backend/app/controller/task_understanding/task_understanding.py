@@ -66,6 +66,23 @@ class TaskUnderstanding:
                 "before and after",
                 "compare these two satellite images",
                 "compare images",
+                # Multi-word phrases rather than a bare "change": the singular
+                # form appears inside unrelated words, and a request naming a
+                # *subject* of change ("vegetation change") would otherwise
+                # fall through to that subject's index and silently compute
+                # the wrong thing on a two-image upload.
+                "change between",
+                "change over",
+                "change from",
+                "vegetation change",
+                "land cover change",
+                "landcover change",
+                "identify change",
+                "find change",
+                "measure change",
+                "compare these two images",
+                "compare the two images",
+                "compare these images",
             ]
         ):
             return "change_detection"
