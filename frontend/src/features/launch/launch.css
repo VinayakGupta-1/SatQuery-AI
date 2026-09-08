@@ -1,0 +1,28 @@
+.sq-veil {
+  position: fixed;
+  inset: 0;
+  z-index: var(--sq-z-cinema);
+  pointer-events: none;
+  opacity: 0;
+  /* Not black: the same ground the workspace sits on, lifted at the centre so
+     the cover reads as arriving at an altitude rather than as a cut to black. */
+  background:
+    radial-gradient(120% 90% at 50% 55%, rgba(24, 44, 62, 0.55), transparent 62%),
+    var(--sq-bg);
+  transition: opacity 560ms var(--sq-ease);
+}
+
+.sq-veil--opaque {
+  opacity: 1;
+  transition-duration: 420ms;
+  transition-timing-function: var(--sq-ease-in);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-veil,
+  .sq-veil--opaque {
+    /* The cross-fade is the reduced-motion form of the descent, so it stays -
+       it is simply short. */
+    transition-duration: 200ms !important;
+  }
+}

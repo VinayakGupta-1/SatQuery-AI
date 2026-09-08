@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Raster viewer
+   ========================================================================== */
+
+.sq-raster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-raster__frame {
+  position: relative;
+  /* Sized from the raster's own aspect ratio (set inline as --sq-raster-ar)
+     and a height budget, so a square scene is a square panel rather than a
+     wide panel with the image letterboxed inside it. */
+  --sq-raster-height: 58vh;
+  width: min(100%, calc(var(--sq-raster-height) * var(--sq-raster-ar, 1.5)));
+  max-height: var(--sq-raster-height);
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: var(--sq-radius);
+  border: 1px solid var(--sq-line-strong);
+  /* A dark checker so nodata reads as "no observation" rather than as a
+     value. Subtle enough not to compete with the data. */
+  background-color: var(--sq-surface-0);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.018) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.018) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  cursor: crosshair;
+  touch-action: pan-y;
+  animation: sq-fade var(--sq-t-slow) var(--sq-ease) both;
+}
+
+.sq-raster__frame--zoomed {
+  cursor: grab;
+  touch-action: none;
+}
+
+.sq-raster__frame--zoomed:active {
+  cursor: grabbing;
+}
+
+.sq-raster__frame--loading {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+}
+
+.sq-raster__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform var(--sq-t-fast) var(--sq-ease-out);
+}
+
+.sq-raster__controls {
+  position: absolute;
+  top: var(--sq-3);
+  right: var(--sq-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+  opacity: 0.45;
+  transition: opacity var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-raster__frame:hover .sq-raster__controls,
+.sq-raster__frame:focus-within .sq-raster__controls {
+  opacity: 1;
+}
+
+.sq-raster__probe {
+  position: absolute;
+  left: var(--sq-3);
+  bottom: var(--sq-3);
+  display: flex;
+  align-items: baseline;
+  gap: var(--sq-2);
+  padding: var(--sq-1) var(--sq-3);
+  border-radius: var(--sq-radius-sm);
+  background: var(--sq-glass-strong);
+  backdrop-filter: var(--sq-blur);
+  -webkit-backdrop-filter: var(--sq-blur);
+  border: 1px solid var(--sq-line-strong);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  pointer-events: none;
+}
+
+.sq-raster__probe strong {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-accent-bright);
+  font-weight: 500;
+}
+
+.sq-raster__probe-pixel {
+  padding-left: var(--sq-2);
+  border-left: 1px solid var(--sq-line);
+}
+
+/* ==========================================================================
+   Staged-file thumbnail
+   ========================================================================== */
+
+.sq-thumb {
+  display: block;
+  flex: none;
+  border-radius: var(--sq-radius-xs);
+  border: 1px solid var(--sq-line-strong);
+  background: var(--sq-surface-0);
+  overflow: hidden;
+}
+
+.sq-thumb__canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Nearest-neighbour: a thumbnail of a scene is already heavily reduced, and
+     smoothing it further only makes it mushy. */
+  image-rendering: pixelated;
+  animation: sq-fade var(--sq-t-base) var(--sq-ease) both;
+}
+
+.sq-thumb--empty {
+  display: grid;
+  place-items: center;
+  color: var(--sq-text-3);
+}
+
+.sq-thumb--loading {
+  background: linear-gradient(
+    90deg,
+    var(--sq-surface-2) 0%,
+    var(--sq-surface-3) 50%,
+    var(--sq-surface-2) 100%
+  );
+  background-size: 240% 100%;
+  animation: sq-shimmer 1.4s var(--sq-ease) infinite;
+}
+
+/* ---- legend -------------------------------------------------------------- */
+
+.sq-raster__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+.sq-raster__ramp {
+  height: 8px;
+  border-radius: var(--sq-radius-pill);
+  border: 1px solid var(--sq-line);
+}
+
+.sq-raster__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+}
+
+.sq-raster__caption {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  line-height: var(--sq-leading-relaxed);
+}

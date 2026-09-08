@@ -1,0 +1,52 @@
+.sq-logo-mark {
+  color: var(--sq-accent);
+  flex: none;
+}
+
+.sq-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sq-3);
+  min-width: 0;
+}
+
+.sq-wordmark__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sq-wordmark__name {
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--sq-text);
+  white-space: nowrap;
+}
+
+.sq-wordmark__suffix {
+  margin-left: 0.32em;
+  font-size: 0.66em;
+  font-weight: 600;
+  letter-spacing: var(--sq-tracking-label);
+  color: var(--sq-brass);
+  vertical-align: 0.28em;
+}
+
+.sq-wordmark__tagline {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  letter-spacing: var(--sq-tracking-wide);
+}
+
+.sq-wordmark--sm .sq-wordmark__name {
+  font-size: var(--sq-text-md);
+}
+
+.sq-wordmark--lg .sq-wordmark__name {
+  font-size: var(--sq-text-xl);
+}
+
+.sq-wordmark--lg .sq-wordmark__tagline {
+  font-size: var(--sq-text-sm);
+}

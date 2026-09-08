@@ -1,0 +1,361 @@
+/* ==========================================================================
+   Sign-in.
+   A single full-viewport stage. The globe is the hero and occupies the whole
+   frame; the panel floats over its right side rather than sitting in a column
+   beside it, so the Earth is never cropped into a strip.
+   ========================================================================== */
+
+.sq-login {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(140% 100% at 20% 45%, rgba(20, 40, 60, 0.5), transparent 60%),
+    var(--sq-void);
+}
+
+/* ---- the globe stage ----------------------------------------------------- */
+
+.sq-login__stage {
+  position: absolute;
+  inset: 0;
+  /* Pushed left of centre so the globe sits under the copy, not under the
+     panel. On narrow screens it recentres (see the media query below). */
+  transform: translateX(-14%);
+  transition:
+    transform 1400ms var(--sq-ease-soft),
+    filter 900ms var(--sq-ease);
+}
+
+.sq-login--descending .sq-login__stage {
+  transform: translateX(0);
+}
+
+/* ---- the analysis reticle -----------------------------------------------
+   Hidden until the descent, then drawn over the arriving surface. This is the
+   visual hinge of the whole transition: the moment the Earth stops being a
+   view of a planet and becomes a frame to be analysed. */
+
+.sq-login__reticle {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sq-login--descending .sq-login__reticle {
+  animation: sq-reticle-in 1900ms var(--sq-ease) both;
+}
+
+@keyframes sq-reticle-in {
+  0%,
+  62% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.sq-login__reticle-grid {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(108, 182, 204, 0.22);
+  border-radius: 2px;
+  background-image:
+    linear-gradient(rgba(108, 182, 204, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 182, 204, 0.09) 1px, transparent 1px);
+  background-size: 12.5% 16.66%;
+}
+
+.sq-login__reticle-sweep {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  top: 8%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(143, 208, 226, 0.75),
+    transparent
+  );
+  box-shadow: 0 0 14px rgba(108, 182, 204, 0.45);
+}
+
+.sq-login--descending .sq-login__reticle-sweep {
+  animation: sq-reticle-sweep 1200ms var(--sq-ease) 700ms both;
+}
+
+@keyframes sq-reticle-sweep {
+  from {
+    top: 8%;
+  }
+  to {
+    top: 92%;
+  }
+}
+
+/* ---- brand --------------------------------------------------------------- */
+
+.sq-login__brand {
+  position: absolute;
+  top: var(--sq-8);
+  left: var(--sq-10);
+  z-index: 2;
+  animation: sq-rise 900ms var(--sq-ease-out) 120ms both;
+  transition:
+    opacity var(--sq-t-slow) var(--sq-ease),
+    transform var(--sq-t-slow) var(--sq-ease-in);
+}
+
+/* ---- panel --------------------------------------------------------------- */
+
+.sq-login__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(430px, 100%);
+  padding: var(--sq-8) var(--sq-10);
+  display: grid;
+  align-content: center;
+  z-index: 2;
+  transition:
+    opacity 620ms var(--sq-ease),
+    transform 620ms var(--sq-ease-in);
+}
+
+.sq-login__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-4);
+  padding: var(--sq-8);
+  border-radius: var(--sq-radius-xl);
+  border: 1px solid var(--sq-line-strong);
+  background: var(--sq-glass-strong);
+  backdrop-filter: var(--sq-blur);
+  -webkit-backdrop-filter: var(--sq-blur);
+  box-shadow: var(--sq-shadow-xl);
+  animation: sq-rise 800ms var(--sq-ease-out) 220ms both;
+}
+
+.sq-login__intro {
+  margin-bottom: var(--sq-2);
+}
+
+.sq-login__title {
+  font-size: var(--sq-text-2xl);
+  margin-bottom: var(--sq-2);
+}
+
+.sq-login__subtitle {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-login__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sq-3);
+  flex-wrap: wrap;
+  margin-top: calc(var(--sq-1) * -1);
+}
+
+.sq-login__link {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+}
+
+.sq-login__link:hover {
+  color: var(--sq-accent);
+}
+
+.sq-login__error {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-danger);
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
+.sq-login__note {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  line-height: var(--sq-leading-relaxed);
+  text-align: center;
+  margin-top: calc(var(--sq-1) * -1);
+}
+
+/* Once the descent starts, the interface gets out of the way. */
+.sq-login--descending .sq-login__panel {
+  opacity: 0;
+  transform: translateX(24px);
+  pointer-events: none;
+}
+
+.sq-login--descending .sq-login__brand,
+.sq-login--descending .sq-login__status {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+/* ---- service status ------------------------------------------------------ */
+
+.sq-login__status {
+  position: absolute;
+  left: var(--sq-10);
+  bottom: var(--sq-8);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--sq-2);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  letter-spacing: var(--sq-tracking-wide);
+  animation: sq-fade 900ms var(--sq-ease) 500ms both;
+  transition:
+    opacity var(--sq-t-slow) var(--sq-ease),
+    transform var(--sq-t-slow) var(--sq-ease-in);
+}
+
+.sq-login__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--sq-text-3);
+}
+
+.sq-login__dot--up {
+  background: var(--sq-success);
+  box-shadow: 0 0 0 3px var(--sq-success-wash);
+}
+
+.sq-login__dot--down {
+  background: var(--sq-danger);
+  box-shadow: 0 0 0 3px var(--sq-danger-wash);
+}
+
+.sq-login__dot--idle {
+  background: var(--sq-warning);
+  animation: sq-pulse 1.6s var(--sq-ease) infinite;
+}
+
+@keyframes sq-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.sq-login__skip {
+  position: absolute;
+  bottom: var(--sq-8);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  letter-spacing: var(--sq-tracking-label);
+  text-transform: uppercase;
+  z-index: 3;
+  animation: sq-fade var(--sq-t-slow) var(--sq-ease) 900ms both;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .sq-login__stage {
+    transform: none;
+    /* Behind the panel now, so it is dimmed to keep the form legible. */
+    opacity: 0.55;
+  }
+
+  .sq-login__panel {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+    padding: calc(var(--sq-20) + var(--sq-6)) var(--sq-5) var(--sq-16);
+    align-content: center;
+  }
+
+  .sq-login__card {
+    max-width: 420px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Centred by pinning both edges rather than by translating a wider-than-
+     viewport box off its own centre, which clipped the tagline. */
+  .sq-login__brand {
+    left: var(--sq-5);
+    right: var(--sq-5);
+    top: var(--sq-6);
+    transform: none;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .sq-login__brand .sq-wordmark {
+    max-width: 100%;
+  }
+
+  .sq-login--descending .sq-login__brand {
+    transform: translateY(-8px);
+  }
+
+  .sq-login__status {
+    left: 0;
+    right: 0;
+    justify-content: center;
+    bottom: var(--sq-5);
+  }
+}
+
+@media (max-width: 480px) {
+  .sq-login__card {
+    padding: var(--sq-6);
+    border-radius: var(--sq-radius-lg);
+  }
+
+  .sq-login__title {
+    font-size: var(--sq-text-xl);
+  }
+
+  /* The tagline is the first thing to go when there is no room for it. */
+  .sq-login__brand .sq-wordmark__tagline {
+    display: none;
+  }
+}
+
+@media (max-height: 620px) {
+  .sq-login__panel {
+    align-content: start;
+    overflow-y: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-login__stage,
+  .sq-login__brand,
+  .sq-login__card,
+  .sq-login__status,
+  .sq-login__reticle,
+  .sq-login__reticle-sweep {
+    animation: none !important;
+    transition: opacity 200ms linear !important;
+    transform: none !important;
+  }
+
+  .sq-login--descending .sq-login__reticle {
+    opacity: 1;
+  }
+}

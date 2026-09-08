@@ -1,0 +1,458 @@
+/* ==========================================================================
+   Workspace shell
+   ========================================================================== */
+
+.sq-shell {
+  height: 100%;
+  display: grid;
+  grid-template-columns: var(--sq-sidebar-w) 1fr;
+  grid-template-rows: var(--sq-topbar-h) 1fr;
+  grid-template-areas:
+    'topbar topbar'
+    'sidebar main';
+  background: var(--sq-bg);
+  transition: grid-template-columns var(--sq-t-base) var(--sq-ease-out);
+  position: relative;
+  isolation: isolate;
+}
+
+.sq-shell--collapsed {
+  grid-template-columns: var(--sq-sidebar-w-collapsed) 1fr;
+}
+
+/* A very faint star layer behind everything. Two radial-gradient tiles, no
+   canvas, no animation - it reads as depth rather than as decoration. */
+.sq-shell__stars {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1px 1px at 18% 22%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 62% 14%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 84% 58%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 32% 76%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 72% 88%, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 62%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(40, 74, 100, 0.28),
+      transparent 60%
+    );
+  background-size:
+    420px 380px,
+    520px 460px,
+    380px 340px,
+    460px 500px,
+    600px 540px,
+    340px 420px,
+    100% 100%;
+}
+
+/* ---- top bar ------------------------------------------------------------- */
+
+.sq-topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  padding: 0 var(--sq-4);
+  border-bottom: 1px solid var(--sq-line);
+  background: var(--sq-glass);
+  backdrop-filter: var(--sq-blur);
+  -webkit-backdrop-filter: var(--sq-blur);
+  z-index: var(--sq-z-sticky);
+}
+
+.sq-topbar__spacer {
+  flex: 1;
+}
+
+.sq-topbar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-2);
+  padding: 4px var(--sq-3);
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius-pill);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-2);
+  background: var(--sq-surface-1);
+}
+
+.sq-topbar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sq-text-3);
+  flex: none;
+}
+
+.sq-topbar__status--up .sq-topbar__dot {
+  background: var(--sq-success);
+}
+
+.sq-topbar__status--down .sq-topbar__dot {
+  background: var(--sq-danger);
+}
+
+.sq-topbar__status--down {
+  border-color: rgba(217, 122, 109, 0.3);
+  color: var(--sq-danger);
+}
+
+.sq-topbar__status--idle .sq-topbar__dot {
+  background: var(--sq-warning);
+  animation: sq-pulse 1.6s var(--sq-ease) infinite;
+}
+
+/* ---- account ------------------------------------------------------------- */
+
+.sq-topbar__account {
+  position: relative;
+}
+
+.sq-topbar__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--sq-surface-3);
+  border: 1px solid var(--sq-line-strong);
+  color: var(--sq-text-2);
+  font-size: var(--sq-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition:
+    background-color var(--sq-t-fast) var(--sq-ease),
+    color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-topbar__avatar:hover {
+  background: var(--sq-surface-4);
+  color: var(--sq-text);
+}
+
+.sq-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 218px;
+  background: var(--sq-surface-3);
+  border: 1px solid var(--sq-line-strong);
+  border-radius: var(--sq-radius);
+  box-shadow: var(--sq-shadow-lg);
+  padding: var(--sq-1);
+  z-index: var(--sq-z-popover);
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
+.sq-menu__head {
+  padding: var(--sq-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--sq-line);
+  margin-bottom: var(--sq-1);
+}
+
+.sq-menu__name {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text);
+}
+
+.sq-menu__detail {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  overflow-wrap: anywhere;
+}
+
+.sq-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-2);
+  width: 100%;
+  padding: var(--sq-2) var(--sq-3);
+  border-radius: var(--sq-radius-sm);
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  text-align: left;
+  transition:
+    background-color var(--sq-t-fast) var(--sq-ease),
+    color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-menu__item:hover {
+  background: var(--sq-surface-4);
+  color: var(--sq-text);
+}
+
+/* ---- sidebar ------------------------------------------------------------- */
+
+.sq-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sq-line);
+  background: var(--sq-surface-1);
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+}
+
+.sq-sidebar__nav {
+  flex: 1;
+  padding: var(--sq-4) var(--sq-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-5);
+}
+
+.sq-sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+}
+
+.sq-sidebar__group-label {
+  padding: 0 var(--sq-3);
+}
+
+/* In the collapsed rail, the group label becomes a hairline separator so the
+   grouping survives without any text. */
+.sq-sidebar__rule {
+  height: 1px;
+  background: var(--sq-line);
+  margin: var(--sq-1) var(--sq-2);
+}
+
+.sq-sidebar__group:first-child .sq-sidebar__rule {
+  display: none;
+}
+
+.sq-sidebar__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sq-sidebar__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  padding: var(--sq-2) var(--sq-3);
+  border-radius: var(--sq-radius-sm);
+  color: var(--sq-text-2);
+  font-size: var(--sq-text-base);
+  text-decoration: none;
+  transition:
+    background-color var(--sq-t-fast) var(--sq-ease),
+    color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-sidebar__link:hover {
+  background: var(--sq-surface-2);
+  color: var(--sq-text);
+  text-decoration: none;
+}
+
+.sq-sidebar__link--active {
+  background: var(--sq-surface-3);
+  color: var(--sq-text);
+}
+
+/* The active marker slides rather than blinks. */
+.sq-sidebar__marker {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 0 2px 2px 0;
+  background: var(--sq-accent);
+  transform: translateY(-50%);
+  transition: height var(--sq-t-base) var(--sq-ease-out);
+}
+
+.sq-sidebar__link--active .sq-sidebar__marker {
+  height: 18px;
+}
+
+.sq-sidebar__icon {
+  flex: none;
+  color: currentColor;
+  opacity: 0.82;
+}
+
+.sq-sidebar__link--active .sq-sidebar__icon {
+  color: var(--sq-accent);
+  opacity: 1;
+}
+
+.sq-sidebar__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sq-sidebar__foot {
+  padding: var(--sq-3);
+  border-top: 1px solid var(--sq-line);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sq-sidebar--collapsed .sq-sidebar__nav {
+  padding-inline: var(--sq-2);
+  align-items: center;
+}
+
+.sq-sidebar--collapsed .sq-sidebar__group,
+.sq-sidebar--collapsed .sq-sidebar__list,
+.sq-sidebar--collapsed .sq-tip {
+  width: 100%;
+}
+
+.sq-sidebar--collapsed .sq-sidebar__link {
+  justify-content: center;
+  padding-inline: 0;
+  width: 100%;
+}
+
+.sq-sidebar--collapsed .sq-sidebar__foot {
+  justify-content: center;
+}
+
+/* Tooltips on the collapsed rail sit beside the icon, not above it. */
+.sq-sidebar--collapsed .sq-tip__bubble {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translate(-4px, -50%);
+}
+
+.sq-sidebar--collapsed .sq-tip:hover .sq-tip__bubble,
+.sq-sidebar--collapsed .sq-tip:focus-within .sq-tip__bubble {
+  transform: translate(0, -50%);
+}
+
+/* ---- drawer -------------------------------------------------------------- */
+
+.sq-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 10, 0.66);
+  backdrop-filter: blur(2px);
+  z-index: calc(var(--sq-z-drawer) - 1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--sq-t-base) var(--sq-ease);
+}
+
+.sq-scrim--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sq-sidebar--drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(288px, 84vw);
+  z-index: var(--sq-z-drawer);
+  transform: translateX(-100%);
+  transition: transform var(--sq-t-base) var(--sq-ease-out);
+  box-shadow: var(--sq-shadow-xl);
+}
+
+.sq-sidebar--open {
+  transform: none;
+}
+
+.sq-sidebar__drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sq-3);
+  padding: var(--sq-4);
+  border-bottom: 1px solid var(--sq-line);
+}
+
+/* ---- main ---------------------------------------------------------------- */
+
+.sq-main {
+  grid-area: main;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.sq-main:focus-visible {
+  outline: none;
+}
+
+/* The shared page container. Every screen uses it, so measure and rhythm are
+   identical across the product. */
+.sq-page {
+  max-width: var(--sq-content-max);
+  margin: 0 auto;
+  padding: var(--sq-8) var(--sq-6) var(--sq-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-6);
+  animation: sq-rise var(--sq-t-base) var(--sq-ease-out) both;
+}
+
+.sq-page--wide {
+  max-width: 1320px;
+}
+
+.sq-page__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sq-4);
+  flex-wrap: wrap;
+}
+
+.sq-page__title {
+  font-size: var(--sq-text-xl);
+  margin-bottom: var(--sq-1);
+}
+
+.sq-page__lede {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  max-width: 62ch;
+  line-height: var(--sq-leading-relaxed);
+}
+
+@media (max-width: 900px) {
+  .sq-shell {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'topbar'
+      'main';
+  }
+
+  .sq-page {
+    padding: var(--sq-6) var(--sq-4) var(--sq-12);
+    gap: var(--sq-5);
+  }
+}
+
+@media (max-width: 560px) {
+  .sq-topbar__status-text {
+    display: none;
+  }
+
+  .sq-topbar__status {
+    padding: 4px var(--sq-2);
+  }
+}

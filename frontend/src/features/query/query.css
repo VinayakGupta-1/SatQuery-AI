@@ -1,0 +1,580 @@
+/* ==========================================================================
+   The query console
+   ========================================================================== */
+
+.sq-page--console {
+  padding-top: clamp(var(--sq-8), 8vh, var(--sq-16));
+  max-width: 800px;
+}
+
+.sq-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-4);
+  border-radius: var(--sq-radius-lg);
+  transition: box-shadow var(--sq-t-base) var(--sq-ease);
+}
+
+/* Dragging a file anywhere over the console lights the whole composer, not
+   just the small drop target. */
+.sq-composer--dropping {
+  box-shadow: 0 0 0 2px var(--sq-accent-line);
+}
+
+.sq-composer__intro {
+  margin-bottom: var(--sq-2);
+}
+
+.sq-composer__greeting {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-3);
+  margin-bottom: var(--sq-2);
+  animation: sq-fade var(--sq-t-slow) var(--sq-ease) both;
+}
+
+.sq-composer__heading {
+  font-size: clamp(var(--sq-text-2xl), 4vw, var(--sq-text-3xl));
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  animation: sq-rise var(--sq-t-slow) var(--sq-ease-out) 60ms both;
+}
+
+/* ---- the box ------------------------------------------------------------- */
+
+.sq-composer__box {
+  background: var(--sq-surface-1);
+  border: 1px solid var(--sq-line-strong);
+  border-radius: var(--sq-radius-lg);
+  overflow: hidden;
+  transition:
+    border-color var(--sq-t-base) var(--sq-ease),
+    box-shadow var(--sq-t-base) var(--sq-ease);
+  animation: sq-rise var(--sq-t-slow) var(--sq-ease-out) 120ms both;
+}
+
+.sq-composer__box:focus-within {
+  border-color: var(--sq-accent-dim);
+  box-shadow: 0 0 0 3px var(--sq-accent-wash);
+}
+
+.sq-composer__input {
+  width: 100%;
+  min-height: 62px;
+  max-height: 220px;
+  padding: var(--sq-4) var(--sq-5) var(--sq-2);
+  background: transparent;
+  border: none;
+  resize: none;
+  font-size: var(--sq-text-md);
+  line-height: var(--sq-leading-relaxed);
+  color: var(--sq-text);
+}
+
+.sq-composer__input:focus-visible {
+  outline: none;
+}
+
+.sq-composer__input::placeholder {
+  color: var(--sq-text-3);
+}
+
+.sq-composer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-2);
+  padding: var(--sq-2) var(--sq-3) var(--sq-3) var(--sq-4);
+  flex-wrap: wrap;
+}
+
+.sq-composer__toolbar-spacer {
+  flex: 1;
+  min-width: var(--sq-2);
+}
+
+.sq-composer__attach {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sq-2);
+  padding: var(--sq-1) var(--sq-3);
+  border-radius: var(--sq-radius-sm);
+  border: 1px dashed var(--sq-line-bright);
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--sq-t-fast) var(--sq-ease),
+    color var(--sq-t-fast) var(--sq-ease),
+    background-color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-composer__attach:hover {
+  border-color: var(--sq-accent-line);
+  color: var(--sq-accent-bright);
+  background: var(--sq-accent-wash);
+}
+
+.sq-composer__shortcut {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  margin-top: calc(var(--sq-2) * -1);
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-composer__where {
+  color: var(--sq-text-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sq-composer__where:hover {
+  color: var(--sq-accent);
+}
+
+.sq-composer__issues {
+  margin: 0;
+  padding-left: var(--sq-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+/* ---- input options ------------------------------------------------------- */
+
+.sq-composer__options {
+  padding: var(--sq-4);
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius);
+  background: var(--sq-surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+  animation: sq-rise var(--sq-t-base) var(--sq-ease-out) both;
+}
+
+.sq-composer__options-hint {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  line-height: var(--sq-leading-relaxed);
+  max-width: 62ch;
+}
+
+.sq-composer__sensor {
+  max-width: 280px;
+  margin-top: var(--sq-2);
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
+/* ---- suggestions --------------------------------------------------------- */
+
+.sq-composer__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+  animation: sq-fade var(--sq-t-slow) var(--sq-ease) 240ms both;
+}
+
+.sq-composer__suggestions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sq-2);
+}
+
+.sq-composer__suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sq-2);
+  padding: var(--sq-2) var(--sq-3);
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius-sm);
+  background: transparent;
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  text-align: left;
+  transition:
+    border-color var(--sq-t-fast) var(--sq-ease),
+    color var(--sq-t-fast) var(--sq-ease),
+    background-color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-composer__suggestion:hover {
+  border-color: var(--sq-line-bright);
+  background: var(--sq-surface-2);
+  color: var(--sq-text);
+}
+
+.sq-composer__suggestion-note {
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+  letter-spacing: var(--sq-tracking-wide);
+}
+
+/* ==========================================================================
+   Upload
+   ========================================================================== */
+
+.sq-upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-upload__zone {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-4);
+  padding: var(--sq-5);
+  border: 1px dashed var(--sq-line-strong);
+  border-radius: var(--sq-radius);
+  background: var(--sq-surface-0);
+  transition:
+    border-color var(--sq-t-fast) var(--sq-ease),
+    background-color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-upload__zone--active {
+  border-color: var(--sq-accent);
+  background: var(--sq-accent-wash);
+}
+
+.sq-upload__glyph {
+  flex: none;
+  color: var(--sq-text-3);
+  transition: color var(--sq-t-fast) var(--sq-ease);
+}
+
+.sq-upload__zone--active .sq-upload__glyph {
+  color: var(--sq-accent-bright);
+}
+
+.sq-upload__copy {
+  min-width: 0;
+}
+
+.sq-upload__prompt {
+  font-size: var(--sq-text-base);
+  color: var(--sq-text-2);
+  cursor: pointer;
+}
+
+.sq-upload__browse {
+  color: var(--sq-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sq-upload__hint {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  margin-top: var(--sq-1);
+}
+
+/* Inline in the composer, the empty dropzone is redundant with the Attach
+   button, so it is hidden until it has something to show. */
+.sq-upload--inline .sq-upload__zone {
+  display: none;
+}
+
+.sq-upload--inline:has(.sq-upload__list) {
+  gap: var(--sq-2);
+}
+
+.sq-upload__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius);
+  overflow: hidden;
+  background: var(--sq-line);
+}
+
+.sq-upload__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  padding: var(--sq-3) var(--sq-3) var(--sq-3) var(--sq-4);
+  background: var(--sq-surface-1);
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
+.sq-upload__item--bad {
+  background: var(--sq-danger-wash);
+}
+
+.sq-upload__item-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sq-upload__item-name {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sq-upload__item-meta {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}
+
+.sq-upload__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}
+
+.sq-upload__clear {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sq-upload__clear:hover {
+  color: var(--sq-danger);
+}
+
+/* ==========================================================================
+   Analysis in progress
+   ========================================================================== */
+
+.sq-analysing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-6);
+  animation: sq-fade var(--sq-t-base) var(--sq-ease) both;
+}
+
+.sq-analysing__frame {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  max-height: 300px;
+  border: 1px solid var(--sq-line-strong);
+  border-radius: var(--sq-radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(24, 48, 68, 0.5), transparent 62%),
+    var(--sq-surface-0);
+}
+
+.sq-analysing__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(108, 182, 204, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 182, 204, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(120% 100% at 50% 40%, #000 40%, transparent 78%);
+}
+
+/* One thin swath crossing the frame. This is the entire loading animation. */
+.sq-analysing__sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(143, 208, 226, 0.85) 22%,
+    rgba(143, 208, 226, 0.85) 78%,
+    transparent
+  );
+  box-shadow: 0 0 18px rgba(108, 182, 204, 0.5);
+  animation: sq-sweep 2.8s var(--sq-ease) infinite;
+}
+
+@keyframes sq-sweep {
+  0% {
+    top: -2%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    top: 102%;
+    opacity: 0;
+  }
+}
+
+.sq-analysing__orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 78%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotateX(74deg);
+  border: 1px solid rgba(201, 164, 92, 0.16);
+  border-radius: 50%;
+}
+
+.sq-analysing__satellite {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sq-brass);
+  transform-origin: 50% calc(50% + 0px);
+  animation: sq-orbit 9s linear infinite;
+}
+
+@keyframes sq-orbit {
+  from {
+    transform: rotate(0deg) translateX(0);
+  }
+  to {
+    transform: rotate(360deg) translateX(0);
+  }
+}
+
+.sq-analysing__readout {
+  position: absolute;
+  left: var(--sq-5);
+  bottom: var(--sq-5);
+  right: var(--sq-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+.sq-analysing__query {
+  font-size: var(--sq-text-md);
+  color: var(--sq-text);
+  line-height: var(--sq-leading);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- status -------------------------------------------------------------- */
+
+.sq-analysing__status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-4);
+  align-items: flex-start;
+}
+
+.sq-analysing__stage {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-md);
+  color: var(--sq-text);
+}
+
+.sq-analysing__percent {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-accent-bright);
+}
+
+.sq-analysing__bar {
+  width: 100%;
+  max-width: 380px;
+  height: 3px;
+  border-radius: var(--sq-radius-pill);
+  background: var(--sq-surface-3);
+  overflow: hidden;
+}
+
+.sq-analysing__bar span {
+  display: block;
+  height: 100%;
+  background: var(--sq-accent);
+  border-radius: inherit;
+  transition: width var(--sq-t-base) var(--sq-ease);
+}
+
+.sq-analysing__stages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+}
+
+.sq-analysing__step {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-3);
+  opacity: 0.5;
+  transition:
+    opacity var(--sq-t-base) var(--sq-ease),
+    color var(--sq-t-base) var(--sq-ease);
+}
+
+.sq-analysing__step--past {
+  opacity: 0.8;
+  color: var(--sq-text-2);
+}
+
+.sq-analysing__step--current {
+  opacity: 1;
+  color: var(--sq-text);
+}
+
+.sq-analysing__step-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.sq-analysing__step--current .sq-analysing__step-dot {
+  background: var(--sq-accent);
+  box-shadow: 0 0 0 3px var(--sq-accent-wash);
+}
+
+/* ---- error detail -------------------------------------------------------- */
+
+.sq-error-fields {
+  margin: var(--sq-3) 0 0;
+  padding-left: var(--sq-4);
+  text-align: left;
+  font-size: var(--sq-text-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+.sq-error-incident {
+  margin-top: var(--sq-3);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}
+
+@media (max-width: 640px) {
+  .sq-analysing__frame {
+    aspect-ratio: 4 / 3;
+  }
+
+  .sq-composer__toolbar {
+    padding-inline: var(--sq-3);
+  }
+}

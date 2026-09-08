@@ -1,0 +1,6 @@
+/* The blank ground shown while a session is restored or a route is split. */
+.sq-boot {
+  position: fixed;
+  inset: 0;
+  background: var(--sq-bg);
+}

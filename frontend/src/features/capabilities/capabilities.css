@@ -1,0 +1,105 @@
+.sq-capgroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-capgroup__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sq-3);
+}
+
+.sq-cap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+  padding: var(--sq-5);
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius);
+  background: var(--sq-surface-1);
+  transition:
+    border-color var(--sq-t-base) var(--sq-ease),
+    transform var(--sq-t-base) var(--sq-ease-out);
+  animation: sq-rise var(--sq-t-base) var(--sq-ease-out) both;
+}
+
+.sq-cap:hover {
+  border-color: var(--sq-line-strong);
+  transform: translateY(-1px);
+}
+
+/* A registered capability with no implementation is shown, but recedes. */
+.sq-cap--unbound {
+  opacity: 0.62;
+  border-style: dashed;
+}
+
+.sq-cap__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sq-3);
+}
+
+.sq-cap__name {
+  font-size: var(--sq-text-md);
+  font-weight: 500;
+}
+
+.sq-cap__description {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-cap__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sq-5);
+  margin: 0;
+  padding: var(--sq-3) 0;
+  border-top: 1px solid var(--sq-line);
+  border-bottom: 1px solid var(--sq-line);
+}
+
+.sq-cap__facts dt {
+  font-size: var(--sq-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--sq-tracking-label);
+  color: var(--sq-text-3);
+  margin-bottom: 2px;
+}
+
+.sq-cap__facts dd {
+  margin: 0;
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text);
+}
+
+.sq-cap__bands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+}
+
+.sq-cap__band-list {
+  display: flex;
+  gap: var(--sq-1);
+  flex-wrap: wrap;
+}
+
+.sq-cap__param-note {
+  margin-top: var(--sq-3);
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-cap__foot {
+  margin-top: auto;
+  padding-top: var(--sq-1);
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+  letter-spacing: var(--sq-tracking-wide);
+}

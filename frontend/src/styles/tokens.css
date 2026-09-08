@@ -1,0 +1,162 @@
+/* ==========================================================================
+   SatQuery AI - design tokens
+   --------------------------------------------------------------------------
+   One source of truth for colour, type, spacing, radius, elevation and motion.
+   Components reference these variables and never hard-code a value, so the
+   whole product can be re-tuned from this file alone.
+
+   The palette is a dark, instrument-panel palette: near-black space grounds,
+   a desaturated instrument cyan for interaction, and a brass accent that reads
+   as "mission" rather than "neon". Semantic colours are borrowed from how the
+   imagery itself is read - vegetation green, water blue, built-up amber.
+   ========================================================================== */
+
+:root {
+  /* ---- surface hierarchy ------------------------------------------------ */
+  --sq-void: #04060a; /* the space behind everything */
+  --sq-bg: #05070c; /* application ground */
+  --sq-surface-0: #080b11; /* sunken wells, inputs */
+  --sq-surface-1: #0b0f16; /* panels, sidebar */
+  --sq-surface-2: #10151d; /* cards on panels */
+  --sq-surface-3: #161c26; /* raised / hovered */
+  --sq-surface-4: #1d2531; /* popovers, tooltips */
+
+  /* Translucent glass. Used sparingly: only over imagery or the 3D scene. */
+  --sq-glass: rgba(11, 15, 22, 0.72);
+  --sq-glass-strong: rgba(8, 11, 17, 0.88);
+  --sq-blur: saturate(140%) blur(20px);
+
+  /* ---- borders ---------------------------------------------------------- */
+  --sq-line: rgba(255, 255, 255, 0.07);
+  --sq-line-strong: rgba(255, 255, 255, 0.12);
+  --sq-line-bright: rgba(255, 255, 255, 0.2);
+
+  /* ---- text ------------------------------------------------------------- */
+  --sq-text: #e9edf4;
+  --sq-text-2: #9aa6b6;
+  --sq-text-3: #6a7788;
+  --sq-text-inverse: #05070c;
+
+  /* ---- accents ---------------------------------------------------------- */
+  /* Instrument cyan: the single interactive colour. */
+  --sq-accent: #6cb6cc;
+  --sq-accent-bright: #8fd0e2;
+  --sq-accent-dim: #3d6d7c;
+  --sq-accent-wash: rgba(108, 182, 204, 0.12);
+  --sq-accent-line: rgba(108, 182, 204, 0.32);
+
+  /* Brass: the brand mark and orbital motifs. Never used for controls. */
+  --sq-brass: #c9a45c;
+  --sq-brass-wash: rgba(201, 164, 92, 0.12);
+
+  /* ---- semantics -------------------------------------------------------- */
+  --sq-success: #56b98d;
+  --sq-success-wash: rgba(86, 185, 141, 0.12);
+  --sq-warning: #d6a24a;
+  --sq-warning-wash: rgba(214, 162, 74, 0.12);
+  --sq-danger: #d97a6d;
+  --sq-danger-wash: rgba(217, 122, 109, 0.12);
+  --sq-info: #7aa7d6;
+  --sq-info-wash: rgba(122, 167, 214, 0.12);
+
+  /* ---- data-visualisation ramp ------------------------------------------ */
+  /* Assigned by meaning where possible so a legend colour matches the map. */
+  --sq-viz-vegetation: #5fa86a;
+  --sq-viz-water: #4a86b8;
+  --sq-viz-built: #c08b52;
+  --sq-viz-bare: #a08a6c;
+  --sq-viz-neutral: #5c6a7a;
+
+  /* ---- typography ------------------------------------------------------- */
+  --sq-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  /* Numbers, identifiers, coordinates and formulas. */
+  --sq-font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Mono',
+    Menlo, Consolas, monospace;
+
+  --sq-text-2xs: 0.6875rem; /* 11 */
+  --sq-text-xs: 0.75rem; /* 12 */
+  --sq-text-sm: 0.8125rem; /* 13 */
+  --sq-text-base: 0.875rem; /* 14 */
+  --sq-text-md: 0.9375rem; /* 15 */
+  --sq-text-lg: 1.125rem; /* 18 */
+  --sq-text-xl: 1.375rem; /* 22 */
+  --sq-text-2xl: 1.75rem; /* 28 */
+  --sq-text-3xl: 2.25rem; /* 36 */
+  --sq-text-4xl: 3rem; /* 48 */
+
+  --sq-leading-tight: 1.15;
+  --sq-leading: 1.5;
+  --sq-leading-relaxed: 1.65;
+
+  /* Small uppercase section labels - the "mission control" voice. */
+  --sq-tracking-label: 0.11em;
+  --sq-tracking-wide: 0.04em;
+
+  /* ---- spacing (4px base) ----------------------------------------------- */
+  --sq-1: 0.25rem;
+  --sq-2: 0.5rem;
+  --sq-3: 0.75rem;
+  --sq-4: 1rem;
+  --sq-5: 1.25rem;
+  --sq-6: 1.5rem;
+  --sq-8: 2rem;
+  --sq-10: 2.5rem;
+  --sq-12: 3rem;
+  --sq-16: 4rem;
+  --sq-20: 5rem;
+
+  /* ---- radius ----------------------------------------------------------- */
+  --sq-radius-xs: 4px;
+  --sq-radius-sm: 6px;
+  --sq-radius: 10px;
+  --sq-radius-lg: 14px;
+  --sq-radius-xl: 20px;
+  --sq-radius-pill: 999px;
+
+  /* ---- elevation -------------------------------------------------------- */
+  --sq-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sq-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.55);
+  --sq-shadow-lg: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
+  --sq-shadow-xl: 0 32px 80px -20px rgba(0, 0, 0, 0.8);
+  /* The only "glow" in the system, and it is a focus ring, not decoration. */
+  --sq-ring: 0 0 0 2px var(--sq-bg), 0 0 0 4px var(--sq-accent-line);
+
+  /* ---- layout ----------------------------------------------------------- */
+  --sq-topbar-h: 52px;
+  --sq-sidebar-w: 244px;
+  --sq-sidebar-w-collapsed: 60px;
+  --sq-content-max: 1080px;
+
+  /* ---- motion ----------------------------------------------------------- */
+  /* Four durations only. If a transition needs a fifth, it is doing too much. */
+  --sq-t-instant: 90ms;
+  --sq-t-fast: 160ms;
+  --sq-t-base: 260ms;
+  --sq-t-slow: 480ms;
+  --sq-t-cinematic: 2100ms;
+
+  --sq-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --sq-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sq-ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --sq-ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --sq-z-content: 1;
+  --sq-z-sticky: 20;
+  --sq-z-drawer: 60;
+  --sq-z-popover: 80;
+  --sq-z-toast: 90;
+  --sq-z-cinema: 100;
+}
+
+/* Motion is decoration everywhere except the cinematic transition, which is
+   replaced by a cross-fade rather than removed. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sq-t-instant: 1ms;
+    --sq-t-fast: 1ms;
+    --sq-t-base: 1ms;
+    --sq-t-slow: 1ms;
+    --sq-t-cinematic: 260ms;
+  }
+}
