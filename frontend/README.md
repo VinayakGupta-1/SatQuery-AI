@@ -38,19 +38,22 @@ npm run lint
 
 ### Something to analyse
 
-The repository ships a generator for a co-registered pair of synthetic
-Sentinel-2-style scenes, so the whole flow can be exercised without hunting for
-a real product first:
+The repository ships a generator for four co-registered synthetic scenes — two
+Sentinel-2-style optical scenes and two Sentinel-1-style radar scenes — so the
+whole flow can be exercised without hunting for a real product first:
 
 ```bash
 cd backend
 python scripts/make_demo_rasters.py demo_data
 ```
 
-They are synthetic but they are real GeoTIFFs — georeferenced, four-band,
-band-named — so everything computed from them is a genuine computation. Upload
-one and ask *"How healthy is the vegetation in this scene?"*, or upload both and
-ask *"Compare these two dates and show me what changed."*
+They are synthetic but they are real GeoTIFFs — georeferenced, band-named,
+sensor-tagged — so everything computed from them is a genuine computation.
+Upload an optical scene and ask *"How healthy is the vegetation in this
+scene?"* or *"How many water bodies are there?"*, upload both optical scenes
+and ask *"Compare these two dates and show me what changed."*, or upload
+`sar_2024-08-22.tif` and ask *"Find areas affected by flooding."* The root
+[README](../README.md) lists more.
 
 ## How it is put together
 
@@ -81,9 +84,10 @@ one function per endpoint the backend actually publishes; `services/http.ts`
 turns the backend's single error envelope into one `ApiError` type.
 
 **The contract is copied, not invented.** `types/api.ts` mirrors the Pydantic
-models. Where the backend has not defined a payload yet — detection records,
-for instance — the component says so in a comment and degrades, rather than
-inventing a shape the backend will have to match later.
+models, and the tool-specific payloads (detection records, class codes) mirror
+the backend code that builds them. Where the backend has not defined a payload,
+a component says so and degrades, rather than inventing a shape the backend
+would have to match later.
 
 **Progressive disclosure.** The default view is the answer. The imagery
 metadata, the capability that was selected and why, the resolved parameters and

@@ -726,46 +726,44 @@ The backend is organized around clear architectural boundaries:
 backend/
 │
 ├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   │
-│   ├── config/
-│   │   ├── __init__.py
-│   │   └── settings.py
-│   │
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   ├── inputs.py
-│   │   ├── task.py
-│   │   ├── errors.py
-│   │   └── ...
-│   │
-│   ├── validator/
-│   │   └── ...
-│   │
-│   ├── agent/
-│   │   └── ...
-│   │
-│   ├── registry/
-│   │   └── ...
-│   │
-│   ├── tools/
-│   │   └── ...
-│   │
-│   ├── models/
-│   │   └── ...
-│   │
-│   ├── services/
-│   │   └── ...
-│   │
-│   └── api/
-│       └── ...
+│   ├── main.py                  FastAPI application factory
+│   ├── config/                  settings (environment and .env) and logging
+│   ├── schemas/                 inputs, task, errors, results
+│   ├── agents/                  query understanding: rules, Ollama or hosted
+│   │                            model, and the guard that strips anything
+│   │                            the registry has not sanctioned
+│   ├── controller/              the pipeline and its stages:
+│   │   ├── task_understanding/      understanding, and adaptation to the
+│   │   │                            imagery's modality
+│   │   ├── task_classification/
+│   │   ├── planning/
+│   │   ├── input_requirements/      requirements and the validator bridge
+│   │   ├── tool_selection/
+│   │   ├── parameter_configuration/
+│   │   ├── execution/               registry policy and authorisation
+│   │   ├── result_integration/      narrators, one per result type
+│   │   └── pipeline.py
+│   ├── validator/               deterministic input validation
+│   ├── registry/                the controlled tool catalogue
+│   ├── tools/                   the capabilities, bound to registry entries:
+│   │   ├── indices/                 NDVI, NDWI, NDBI
+│   │   ├── landcover/               rule-based land-cover classification
+│   │   ├── detection/               objects as connected land-cover regions
+│   │   ├── sar/                     backscatter water and flood mapping
+│   │   ├── change/                  optical index and SAR log-ratio change
+│   │   ├── fusion/                  optical + SAR water fusion, sensor agreement
+│   │   ├── vlm/                     the vision-language model core (operator
+│   │   │                            opt-in): VQA, captioning with region
+│   │   │                            grounding, change-VQA
+│   │   └── raster/                  GeoTIFF I/O on two backends, bands, masks,
+│   │                                AOI clipping, CRS transforms, previews
+│   ├── evaluation/              benchmark loading and scoring (RSVQA,
+│   │                            VRSBench, CDVQA) behind confidence scoring
+│   ├── storage/                 upload and artifact storage
+│   └── api/                     routes, ingestion, response shaping
 │
-└── tests/
-    ├── test_schemas.py
-    ├── test_validator.py
-    ├── test_agent.py
-    └── ...
+├── scripts/make_demo_rasters.py
+└── tests/                       unit, integration and end-to-end
 ```
 
 The exact structure may evolve as additional capabilities are implemented.

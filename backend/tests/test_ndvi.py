@@ -336,4 +336,9 @@ def test_executor_runs_a_bound_tool(sentinel2_scene, tmp_path):
 
 def test_executor_refuses_an_unbound_tool(sentinel2_scene):
     with pytest.raises(ToolNotImplementedError, match="no execution implementation"):
+        ToolExecutor().run("future_tool", input_references=[sentinel2_scene])
+
+
+def test_executor_refuses_a_switched_off_tool(sentinel2_scene):
+    with pytest.raises(ToolNotImplementedError, match="switched off"):
         ToolExecutor().run("satellite_vqa", input_references=[sentinel2_scene])

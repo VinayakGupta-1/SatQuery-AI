@@ -13,7 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.schemas.results import Evidence
+from app.schemas.results import ConfidenceReport, Evidence, Finding, TraceEvent
 
 
 class TaskStatus(str, Enum):
@@ -46,8 +46,16 @@ class ToolSummary(BaseModel):
     requires_temporal_pair: bool
     parameters: dict[str, str] = Field(default_factory=dict)
     enabled: bool
-    #: False when the tool is registered but has no implementation bound yet.
+    #: ``deterministic``, ``vlm`` or ``hybrid``: which side of the core answers.
+    engine: str = "deterministic"
+    #: False when the tool cannot run in this deployment: no implementation is
+    #: bound yet, or the one that is bound is switched off.
     implemented: bool
+    #: True when an implementation is bound, even if it is switched off -- so
+    #: "not built yet" and "built but off" can be told apart.
+    bound: bool = False
+    #: Why ``implemented`` is false, phrased for an operator; ``None`` otherwise.
+    availability_note: str | None = None
 
 
 class ImageSummary(BaseModel):
@@ -77,6 +85,26 @@ class ImageSummary(BaseModel):
     sensor: str | None = None
     bands: list[str] = Field(default_factory=list)
     acquisition_date: str | None = None
+    #: The footprint as ``[west, south, east, north]`` in degrees, when the
+    #: CRS can be transformed -- so a user can check it covers their place.
+    bounds_lonlat: list[float] | None = None
+
+
+class UnderstandingOut(BaseModel):
+    """What the question was read as, beyond its task."""
+
+    intent: str | None = None
+    #: Place names as written. Reported, never geocoded.
+    locations: list[str] = Field(default_factory=list)
+    #: The area of interest, in words, when the question named one.
+    area: str | None = None
+    #: The period the question names, in words.
+    period: str | None = None
+    metrics: list[str] = Field(default_factory=list)
+    #: What the sentence says about the sensor.
+    query_modality: str | None = None
+    #: What the uploaded imagery actually is.
+    imagery_modality: str | None = None
 
 
 class ValidationIssueOut(BaseModel):
@@ -165,7 +193,16 @@ class TaskResponse(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     artifacts: list[ArtifactLink] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)
+    #: The weakest measured confidence factor; ``None`` when unrated.
     confidence: float | None = None
+    #: ``deterministic``, ``vlm`` or ``hybrid``: which engine answered.
+    route: str = "deterministic"
+    understood: UnderstandingOut = Field(default_factory=UnderstandingOut)
+    #: The answer broken into grounded parts: what, how much, where.
+    findings: list[Finding] = Field(default_factory=list)
+    confidence_report: ConfidenceReport | None = None
+    #: Every pipeline stage as it ran, timed, with the tool's own steps.
+    trace: list[TraceEvent] = Field(default_factory=list)
 
 
 class TaskListEntry(BaseModel):
@@ -183,10 +220,17 @@ class ValidationResponse(BaseModel):
     status: TaskStatus
     task_category: str
     selected_tool: str | None = None
+    #: True only when every stage, including the Registry's execution policy,
+    #: cleared the request. The tool itself is never run to find out.
     would_execute: bool
+    #: When ``would_execute`` is false: what stands in the way, in one sentence.
+    reason: str | None = None
     images: list[ImageSummary] = Field(default_factory=list)
     validation: ValidationReport
     explanation: ExplanationOut
+    route: str = "deterministic"
+    understood: UnderstandingOut = Field(default_factory=UnderstandingOut)
+    trace: list[TraceEvent] = Field(default_factory=list)
 
 
 class BackendInfo(BaseModel):
@@ -217,6 +261,11 @@ class CapabilitiesResponse(BaseModel):
     #: True when a hosted model is configured and in use. The key is never
     #: exposed -- only whether one is present.
     agent_llm_enabled: bool
+    #: ``hosted`` or ``ollama`` when the vision-language model core is on;
+    #: ``None`` when it is switched off.
+    vlm_provider: str | None = None
+    #: True when the vision model runs on this machine, so no imagery leaves it.
+    vlm_local: bool = False
     backend: "BackendInfo"
 
 

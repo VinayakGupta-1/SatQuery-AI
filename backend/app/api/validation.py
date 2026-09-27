@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app import __version__
 from app.api.registry import summarise
 from app.api.schemas import BackendInfo, CapabilitiesResponse, HealthResponse
 from app.config.settings import get_settings
@@ -19,8 +20,8 @@ from app.tools.raster.io import backend_report
 
 router = APIRouter(tags=["system"])
 
-#: Kept in step with the FastAPI app version.
-APP_VERSION = "1.0.0"
+#: The same version the FastAPI app reports: one definition, in app/__init__.
+APP_VERSION = __version__
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -59,5 +60,7 @@ def capabilities() -> CapabilitiesResponse:
         max_images_per_task=settings.max_images_per_task,
         agent_provider=settings.resolved_agent_provider,
         agent_llm_enabled=settings.resolved_agent_provider in {"hosted", "ollama"},
+        vlm_provider=settings.vqa_provider if settings.vqa_available else None,
+        vlm_local=settings.vqa_available and settings.vqa_is_local,
         backend=BackendInfo(**backend_report()),
     )

@@ -48,6 +48,13 @@ class TaskClassifier:
             "ndvi": "index_analysis",
             "ndwi": "index_analysis",
             "ndbi": "index_analysis",
+            # Flooding is open water. On optical imagery that is NDWI; the
+            # pipeline turns it into SAR analysis when the imagery is radar.
+            "flood_mapping": "index_analysis",
+            "sar_analysis": "sar_analysis",
+            "optical_sar_fusion": "optical_sar_fusion",
+            "image_captioning": "image_captioning",
+            "change_vqa": "change_vqa",
             "object_detection": "object_detection",
             "segmentation": "segmentation",
             "classification": "scene_classification",

@@ -3,8 +3,13 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from app.registry.registry import get_tool
-from app.tools.base import ToolExecutionError, ToolOutput
-from app.tools.binding import has_implementation, implemented_tool_ids
+from app.tools.base import ToolExecutionError, ToolOutput, ToolRequest, UnsupportedRequestError
+from app.tools.binding import (
+    get_implementation,
+    has_implementation,
+    implemented_tool_ids,
+    unavailable_reason,
+)
 from app.tools.executor import ToolExecutor, ToolNotImplementedError
 
 
@@ -36,6 +41,41 @@ class ExecutionOrchestrator:
         self.executor = executor or ToolExecutor()
 
     def execute(self, request: ExecutionRequest) -> ExecutionResult:
+        decision = self.authorise(request)
+        if decision.status != "authorised":
+            return decision
+
+        tool = get_tool(request.tool_id)
+        metadata = decision.execution_metadata
+        try:
+            output = self._execute_registered_tool(
+                tool.tool_id,
+                request.parameters,
+                request.input_references,
+                request.output_directory,
+            )
+        except (ToolNotImplementedError, UnsupportedRequestError) as exc:
+            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=str(exc), execution_metadata=metadata)
+        except Exception as exc:
+            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=str(exc), execution_metadata=metadata)
+
+        if isinstance(output, ToolOutput):
+            metadata.update(output.metadata)
+            metadata["result_type"] = output.result_type
+            metadata["artifacts"] = [artifact.path for artifact in output.artifacts]
+            output = output.model_dump()
+
+        return ExecutionResult(tool_id=tool.tool_id, status="completed", output=output, execution_metadata=metadata)
+
+    def authorise(self, request: ExecutionRequest) -> ExecutionResult:
+        """Apply every Registry policy check without running the tool.
+
+        Returns status ``authorised`` when :meth:`execute` would hand the
+        request to the implementation, and otherwise exactly the ``blocked`` or
+        ``failed`` result :meth:`execute` would return. A dry run uses this, so
+        "would this run?" is answered by the same code that decides whether it
+        does run, and never by computing the result to find out.
+        """
         if not isinstance(request, ExecutionRequest):
             raise TypeError("request must be an ExecutionRequest")
 
@@ -66,7 +106,8 @@ class ExecutionOrchestrator:
         if unknown_parameters:
             return ExecutionResult(tool_id=tool.tool_id, status="failed", error="Unknown parameters: " + ", ".join(unknown_parameters))
 
-        if not has_implementation(tool.tool_id):
+        implementation = get_implementation(tool.tool_id)
+        if implementation is None:
             return ExecutionResult(
                 tool_id=tool.tool_id,
                 status="blocked",
@@ -77,27 +118,39 @@ class ExecutionOrchestrator:
                 ),
                 execution_metadata=self._metadata(tool, request),
             )
-
-        metadata = self._metadata(tool, request)
-        try:
-            output = self._execute_registered_tool(
-                tool.tool_id,
-                request.parameters,
-                request.input_references,
-                request.output_directory,
+        if not has_implementation(tool.tool_id):
+            return ExecutionResult(
+                tool_id=tool.tool_id,
+                status="blocked",
+                error=(
+                    f"Tool '{tool.tool_id}' is switched off in this deployment. "
+                    f"{unavailable_reason(tool.tool_id)} Available tools: "
+                    f"{implemented_tool_ids()}."
+                ),
+                execution_metadata=self._metadata(tool, request),
             )
-        except ToolNotImplementedError as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=str(exc), execution_metadata=metadata)
-        except Exception as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=str(exc), execution_metadata=metadata)
 
-        if isinstance(output, ToolOutput):
-            metadata.update(output.metadata)
-            metadata["result_type"] = output.result_type
-            metadata["artifacts"] = [artifact.path for artifact in output.artifacts]
-            output = output.model_dump()
+        # The tool's own parameter-level refusal. It reads no pixels, so a dry
+        # run can ask it too.
+        try:
+            implementation.preflight(
+                ToolRequest(
+                    tool_id=tool.tool_id,
+                    parameters=request.parameters,
+                    input_references=request.input_references,
+                    output_directory=request.output_directory,
+                )
+            )
+        except UnsupportedRequestError as exc:
+            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=str(exc), execution_metadata=self._metadata(tool, request))
+        except ToolExecutionError as exc:
+            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=str(exc), execution_metadata=self._metadata(tool, request))
 
-        return ExecutionResult(tool_id=tool.tool_id, status="completed", output=output, execution_metadata=metadata)
+        return ExecutionResult(
+            tool_id=tool.tool_id,
+            status="authorised",
+            execution_metadata=self._metadata(tool, request),
+        )
 
     @staticmethod
     def _metadata(tool: Any, request: ExecutionRequest) -> Dict[str, Any]:

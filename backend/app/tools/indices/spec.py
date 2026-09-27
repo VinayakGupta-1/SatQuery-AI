@@ -88,7 +88,7 @@ def compute_index(
             f"'{negative_id}' both resolved to band '{positive.name}'."
         )
 
-    mask, mask_report = _build_mask(dataset, parameters, sensor)
+    mask, mask_report = mask_from_parameters(dataset, parameters, sensor)
 
     band, statistics = normalized_difference(
         positive,
@@ -115,7 +115,7 @@ def compute_index(
     )
 
 
-def _build_mask(
+def mask_from_parameters(
     dataset: RasterDataset,
     parameters: dict[str, Any],
     sensor: str | None,

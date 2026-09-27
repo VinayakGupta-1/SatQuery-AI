@@ -1,7 +1,9 @@
 from app.schemas.errors import ErrorCode, ValidationIssue, ValidationResult
 from app.schemas.inputs import ImageInput
+from app.schemas.spatiotemporal import AreaOfInterest
 from app.schemas.task import InputRequirements
 from app.tools.raster.bands import canonical_name, normalise
+from app.tools.raster.crs import CRSError, transform_bounds
 
 
 def _band_key(name: str) -> str:
@@ -154,8 +156,93 @@ def validate_inputs(
                     field="images",
                 ))
 
+    # 9. One optical and one SAR image
+    if requirements.requires_optical_and_sar_pair:
+        modalities = sorted(
+            (image.metadata.modality if image.metadata else None) or "unknown"
+            for image in images
+        )
+        if modalities != ["optical", "sar"]:
+            errors.append(ValidationIssue(
+                code=ErrorCode.MODALITY_MISMATCH,
+                message=("This analysis needs one optical and one SAR image of the "
+                         f"same area, but received: {', '.join(modalities) or 'none'}."),
+                field="images",
+            ))
+
+    # 10. Near-simultaneous acquisition
+    if requirements.max_days_between_images is not None and image_count == 2:
+        dates = [image.metadata.acquisition_date if image.metadata else None
+                 for image in images]
+        if all(date is not None for date in dates):
+            gap = abs((dates[0] - dates[1]).days)
+            if gap > requirements.max_days_between_images:
+                errors.append(ValidationIssue(
+                    code=ErrorCode.TEMPORAL_INCOMPATIBILITY,
+                    message=(f"The images were acquired {gap} days apart ({dates[0]} and "
+                             f"{dates[1]}); this analysis needs them within "
+                             f"{requirements.max_days_between_images} days, or they "
+                             "describe different conditions on the ground."),
+                    field="images",
+                ))
+
+    # 11. The period the question names
+    if requirements.time_range is not None:
+        period = requirements.time_range
+        for image in images:
+            acquired = image.metadata.acquisition_date if image.metadata else None
+            if acquired is None:
+                warnings.append(
+                    f"Image '{image.id}' has no acquisition date, so it could not be "
+                    f"checked against the period asked about ({period.describe()})."
+                )
+            elif not period.contains(acquired):
+                errors.append(ValidationIssue(
+                    code=ErrorCode.TEMPORAL_INCOMPATIBILITY,
+                    message=(f"Image '{image.id}' was acquired on {acquired}, outside the "
+                             f"period the question asks about ({period.describe()})."),
+                    field=f"images.{image.id}.metadata.acquisition_date",
+                ))
+
+    # 12. The area the question names
+    if requirements.aoi is not None and requirements.aoi.bbox is not None:
+        for image in images:
+            issue = _aoi_issue(image, requirements.aoi)
+            if issue is not None:
+                errors.append(issue)
+
     return ValidationResult(
         valid=len(errors) == 0,
         errors=errors,
         warnings=warnings,
     )
+
+
+def _aoi_issue(image: ImageInput, aoi: AreaOfInterest) -> ValidationIssue | None:
+    """Refuse an image the question's area cannot be located in, or misses."""
+    metadata = image.metadata
+    field = f"images.{image.id}.metadata.bounds"
+    if metadata is None or metadata.bounds is None or metadata.crs is None:
+        return ValidationIssue(
+            code=ErrorCode.SPATIAL_MISMATCH,
+            message=(f"The question names an area by coordinates, but image '{image.id}' "
+                     "has no georeferencing, so the area cannot be located in it."),
+            field=field,
+        )
+    try:
+        min_x, min_y, max_x, max_y = transform_bounds(aoi.bbox, aoi.crs, metadata.crs)
+    except CRSError as error:
+        return ValidationIssue(
+            code=ErrorCode.CRS_MISMATCH,
+            message=f"The question's area could not be placed in image '{image.id}': {error}",
+            field=field,
+        )
+    left, bottom, right, top = metadata.bounds
+    if max_x <= left or min_x >= right or max_y <= bottom or min_y >= top:
+        return ValidationIssue(
+            code=ErrorCode.SPATIAL_MISMATCH,
+            message=(f"The area the question names ({aoi.describe()}) does not overlap "
+                     f"image '{image.id}'."),
+            field=field,
+        )
+    return None

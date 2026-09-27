@@ -10,7 +10,7 @@ import {
 } from '../../components/ui'
 import { AlertIcon } from '../../components/icons'
 import { useCapabilities } from '../../context/capabilitiesContext'
-import { TOOL_TYPE_LABELS, OUTPUT_TYPE_LABELS, bandLabel } from '../../utils/labels'
+import { ENGINE_META, TOOL_TYPE_LABELS, OUTPUT_TYPE_LABELS, bandLabel } from '../../utils/labels'
 import type { ToolSummary, ToolType } from '../../types/api'
 import './capabilities.css'
 
@@ -82,8 +82,15 @@ export function CapabilitiesPage() {
           <h1 className="sq-page__title">Capabilities</h1>
           <p className="sq-page__lede">
             Everything this deployment is allowed to run. {executable} of{' '}
-            {registered} registered capabilities have an implementation bound;
+            {registered} registered capabilities can run here right now;
             nothing outside this list can execute.
+          </p>
+          <p className="sq-page__lede">
+            {!capabilities.vlm_provider
+              ? 'The vision-language model core is off; every answer comes from the deterministic engines.'
+              : capabilities.vlm_local
+                ? 'The vision-language model core is on and runs on this machine; no imagery leaves it.'
+                : 'The vision-language model core is on and uses a hosted model: rendered previews of your imagery are sent to it.'}
           </p>
         </div>
         <Segmented
@@ -111,6 +118,11 @@ export function CapabilitiesPage() {
   )
 }
 
+/** A tool that is built but that an operator has not switched on. */
+function isSwitchedOff(tool: ToolSummary): boolean {
+  return !tool.implemented && tool.bound
+}
+
 function CapabilityCard({ tool }: { tool: ToolSummary }) {
   const parameters = Object.entries(tool.parameters)
 
@@ -121,16 +133,25 @@ function CapabilityCard({ tool }: { tool: ToolSummary }) {
     >
       <header className="sq-cap__head">
         <h3 className="sq-cap__name">{tool.name}</h3>
+        {ENGINE_META[tool.engine] ? (
+          <Tag tone={ENGINE_META[tool.engine].tone} title={ENGINE_META[tool.engine].description}>
+            {ENGINE_META[tool.engine].label}
+          </Tag>
+        ) : null}
         {tool.implemented ? (
           <Tag tone="success">Available</Tag>
         ) : (
-          <Tag tone="neutral" title="Registered, but no implementation is bound">
-            Not built yet
+          <Tag tone="neutral" title={tool.availability_note ?? undefined}>
+            {isSwitchedOff(tool) ? 'Switched off' : 'Not built yet'}
           </Tag>
         )}
       </header>
 
       <p className="sq-cap__description">{tool.description}</p>
+
+      {!tool.implemented && tool.availability_note ? (
+        <p className="sq-cap__param-note">{tool.availability_note}</p>
+      ) : null}
 
       <dl className="sq-cap__facts">
         <div>

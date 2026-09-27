@@ -29,13 +29,22 @@ class ToolSelectionResult(BaseModel):
 
 class ToolSelector:
     """Selects the most suitable registered tool for a planned task."""
+    #: The tool types that can serve each task category. Segmentation lists
+    #: classification too: a per-pixel land-cover classifier *is* a semantic
+    #: segmentation of the scene into land-cover classes.
     CATEGORY_TO_TOOL_TYPE = {
-        "index_analysis": ToolType.INDEX,
-        "object_detection": ToolType.OBJECT_DETECTION,
-        "change_detection": ToolType.CHANGE_DETECTION,
-        "segmentation": ToolType.SEGMENTATION,
-        "scene_classification": ToolType.CLASSIFICATION,
-        "image_analysis": ToolType.VQA,
+        "index_analysis": (ToolType.INDEX,),
+        "object_detection": (ToolType.OBJECT_DETECTION,),
+        "change_detection": (ToolType.CHANGE_DETECTION,),
+        "segmentation": (ToolType.SEGMENTATION, ToolType.CLASSIFICATION),
+        "scene_classification": (ToolType.CLASSIFICATION,),
+        "image_analysis": (ToolType.VQA,),
+        "sar_analysis": (ToolType.SAR_ANALYSIS,),
+        "optical_sar_fusion": (ToolType.FUSION,),
+        "image_captioning": (ToolType.CAPTIONING,),
+        # Change-VQA is question answering over a temporal pair; the temporal
+        # requirement is what separates it from single-image VQA.
+        "change_vqa": (ToolType.VQA,),
     }
 
     def select(self, understanding: TaskUnderstandingResult, classification: TaskClassificationResult, plan: TaskPlan, requirements: InputRequirements) -> ToolSelectionResult:
@@ -52,13 +61,13 @@ class ToolSelector:
         if category == "unknown":
             return ToolSelectionResult(task_category=category, capability=category, selection_reason="Task category is unknown.", confidence=0.0, status="requires_clarification")
 
-        expected_tool_type = self.CATEGORY_TO_TOOL_TYPE.get(category)
-        if expected_tool_type is None:
+        expected_tool_types = self.CATEGORY_TO_TOOL_TYPE.get(category)
+        if expected_tool_types is None:
             return ToolSelectionResult(task_category=category, capability=category, selection_reason="No registry mapping exists for this task category.", confidence=0.0, status="no_compatible_tool")
 
         candidates = []
         for tool in get_enabled_tools():
-            score, reasons = self._evaluate_tool(tool, expected_tool_type, requirements)
+            score, reasons = self._evaluate_tool(tool, expected_tool_types, requirements)
             if score > 0:
                 candidates.append(ToolCandidate(tool_id=tool.tool_id, tool_name=tool.name, score=score, reasons=reasons))
 
@@ -69,10 +78,10 @@ class ToolSelector:
         selected = candidates[0]
         return ToolSelectionResult(task_category=category, selected_tool_id=selected.tool_id, selected_tool_name=selected.tool_name, capability=category, selection_reason=(f"Selected registered tool '{selected.tool_name}' because it satisfies the required task capability and input requirements."), confidence=min(selected.score, 1.0), alternatives=candidates[1:], status="selected")
 
-    def _evaluate_tool(self, tool: ToolDefinition, expected_tool_type: ToolType, requirements: InputRequirements) -> tuple[float, List[str]]:
+    def _evaluate_tool(self, tool: ToolDefinition, expected_tool_types: tuple[ToolType, ...], requirements: InputRequirements) -> tuple[float, List[str]]:
         reasons = []
         score = 0.0
-        if tool.tool_type != expected_tool_type:
+        if tool.tool_type not in expected_tool_types:
             return 0.0, []
         score += 0.40
         reasons.append("tool capability matches task category")
@@ -95,8 +104,11 @@ class ToolSelector:
             score += 0.15
             reasons.append("modality requirements are compatible")
 
+        # A tool that declares no fixed bands (change detection, whose bands
+        # follow the index it differences) is not ruled out here; the validator
+        # still checks the imagery for the bands the task needs.
         required_bands = requirements.required_bands
-        if required_bands:
+        if required_bands and tool.required_bands:
             band_match = (
                 "required_spectral_bands" in required_bands
                 or all(band in tool.required_bands for band in required_bands)
@@ -106,7 +118,14 @@ class ToolSelector:
             score += 0.15
             reasons.append("required spectral bands are supported")
 
-        if requirements.requires_temporal_information:
+        # Dates matter to a before/after comparison and to fusion, which checks
+        # its optical and SAR images were taken close together. Only the
+        # comparison needs a tool built for a temporal pair.
+        compares_dates = (
+            requirements.requires_temporal_information
+            and not requirements.requires_optical_and_sar_pair
+        )
+        if compares_dates:
             if not tool.requires_temporal_pair:
                 return 0.0, []
             score += 0.10

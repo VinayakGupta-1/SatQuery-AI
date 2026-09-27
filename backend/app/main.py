@@ -17,6 +17,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import __version__
 from app.api import registry as registry_routes
 from app.api import tasks as task_routes
 from app.api import validation as system_routes
@@ -94,7 +95,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="SatQuery AI",
         description=DESCRIPTION,
-        version="1.0.0",
+        version=__version__,
         openapi_tags=OPENAPI_TAGS,
         responses=DEFAULT_RESPONSES,
     )

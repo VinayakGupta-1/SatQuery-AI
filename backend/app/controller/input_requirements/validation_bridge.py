@@ -62,6 +62,14 @@ def to_validation_requirements(
     if tool is not None:
         maximum = tool.max_images
         temporal_pair = tool.requires_temporal_pair
+        # Where the controller could only describe the input ("compatible
+        # imagery", "the bands this task needs"), the selected tool's registry
+        # contract is specific, so it is what gets enforced. A tool accepting
+        # several modalities leaves the modality open rather than picking one.
+        if not modalities and len(tool.supported_modalities) == 1:
+            modalities = list(tool.supported_modalities)
+        if not bands and tool.required_bands:
+            bands = list(tool.required_bands)
     else:
         # A max of 0 means "no upper bound" to the validator.
         maximum = 0
@@ -80,4 +88,8 @@ def to_validation_requirements(
         requires_temporal_pair=temporal_pair,
         requires_optical_input=modalities == ["optical"],
         requires_sar_input=modalities == ["sar"],
+        requires_optical_and_sar_pair=requirements.requires_optical_and_sar_pair,
+        max_days_between_images=requirements.max_days_between_images,
+        time_range=requirements.time_range,
+        aoi=requirements.aoi,
     )

@@ -66,6 +66,27 @@ def new_sample_buffer(dtype: str, size: int, fill: float = 0.0) -> array.array:
 # ============================================================
 # GEOREFERENCING
 # ============================================================
+#: EPSG codes in this range are geographic (degrees), not projected (metres).
+GEOGRAPHIC_EPSG_RANGE = (4000, 4999)
+
+
+def is_projected_crs(crs: str | None) -> bool:
+    """Return True when ``crs`` measures distance in linear units.
+
+    Areas may only be converted to hectares or square kilometres for a
+    projected CRS. In a geographic CRS the raster's "pixel area" is in square
+    degrees, whose ground size varies with latitude, so converting it would
+    produce a confidently wrong number.
+    """
+    if not crs or not crs.upper().startswith("EPSG:"):
+        return False
+    try:
+        code = int(crs.split(":", 1)[1])
+    except ValueError:
+        return False
+    return not (GEOGRAPHIC_EPSG_RANGE[0] <= code <= GEOGRAPHIC_EPSG_RANGE[1])
+
+
 @dataclass(frozen=True)
 class GeoReference:
     """Spatial reference information attached to a raster.

@@ -710,3 +710,430 @@
     display: none;
   }
 }
+
+/* A model's answer carries its caveat as a separate paragraph. */
+.sq-result__answer p {
+  white-space: pre-line;
+}
+
+/* ---- detected objects ------------------------------------------------------ */
+
+.sq-objects {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sq-objects__row {
+  display: grid;
+  grid-template-columns: 4ch 10px 1fr auto auto;
+  align-items: center;
+  gap: var(--sq-3);
+  padding: var(--sq-2) 0;
+  border-bottom: 1px solid var(--sq-line);
+  font-size: var(--sq-text-sm);
+}
+
+.sq-objects__row:last-child {
+  border-bottom: none;
+}
+
+.sq-objects__id {
+  color: var(--sq-text-3);
+  font-size: var(--sq-text-xs);
+}
+
+.sq-objects__name {
+  color: var(--sq-text-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sq-objects__area {
+  color: var(--sq-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sq-objects__where {
+  color: var(--sq-text-3);
+  font-size: var(--sq-text-xs);
+  text-align: right;
+  min-width: 14ch;
+}
+
+/* ---- the picture a vision model answered from ------------------------------ */
+
+.sq-vqa {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-vqa__image {
+  display: block;
+  max-width: 100%;
+  max-height: 58vh;
+  margin-inline: auto;
+  border-radius: var(--sq-radius);
+  border: 1px solid var(--sq-line-strong);
+}
+
+.sq-vqa__caption {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  line-height: var(--sq-leading-relaxed);
+}
+
+@media (max-width: 640px) {
+  .sq-objects__row {
+    grid-template-columns: 4ch 10px 1fr auto;
+  }
+
+  .sq-objects__where {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   How the question was read
+   ========================================================================== */
+
+.sq-understood {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sq-2) var(--sq-5);
+  margin: 0;
+  font-size: var(--sq-text-sm);
+}
+
+.sq-understood__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sq-2);
+  min-width: 0;
+}
+
+.sq-understood dt {
+  color: var(--sq-text-3);
+  font-size: var(--sq-text-xs);
+}
+
+.sq-understood dd {
+  margin: 0;
+  color: var(--sq-text);
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Grounding: findings and confidence
+   ========================================================================== */
+
+.sq-result__grounding {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sq-5);
+  align-items: start;
+}
+
+.sq-findings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-findings__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+  padding-bottom: var(--sq-3);
+  border-bottom: 1px solid var(--sq-line);
+}
+
+.sq-findings__item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.sq-findings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sq-3);
+}
+
+.sq-findings__title {
+  font-weight: 600;
+  color: var(--sq-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sq-findings__detail {
+  margin: 0;
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-confidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-confidence__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+}
+
+.sq-confidence__score {
+  font-size: var(--sq-text-lg);
+  color: var(--sq-text);
+}
+
+.sq-confidence__basis,
+.sq-confidence__detail,
+.sq-confidence__note {
+  margin: 0;
+  line-height: var(--sq-leading-relaxed);
+}
+
+.sq-confidence__basis {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+}
+
+.sq-confidence__factors {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-confidence__factor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+.sq-confidence__factor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+}
+
+.sq-confidence__factor--weakest .sq-confidence__factor-head {
+  color: var(--sq-text);
+}
+
+.sq-confidence__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--sq-surface-3);
+  overflow: hidden;
+}
+
+.sq-confidence__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--sq-accent-dim);
+}
+
+.sq-confidence__factor--weakest .sq-confidence__bar > span {
+  background: var(--sq-accent);
+}
+
+.sq-confidence__detail,
+.sq-confidence__note {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}
+
+/* ==========================================================================
+   Execution trace
+   ========================================================================== */
+
+.sq-details__block--wide {
+  grid-column: 1 / -1;
+}
+
+.sq-trace {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+}
+
+.sq-trace__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-sm);
+}
+
+.sq-trace__name {
+  color: var(--sq-text-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.sq-trace__status,
+.sq-trace__time {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  white-space: nowrap;
+}
+
+.sq-trace__detail {
+  margin: 2px 0 0 calc(6px + var(--sq-3));
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+  overflow-wrap: anywhere;
+}
+
+.sq-trace__steps {
+  list-style: none;
+  margin: var(--sq-1) 0 0 calc(6px + var(--sq-3));
+  padding: 0 0 0 var(--sq-3);
+  border-left: 1px solid var(--sq-line-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--sq-text-xs);
+}
+
+.sq-trace__steps li {
+  display: flex;
+  gap: var(--sq-2);
+  align-items: baseline;
+}
+
+.sq-trace__step-name {
+  color: var(--sq-text-2);
+}
+
+.sq-trace__step-detail {
+  flex: 1;
+  min-width: 0;
+  color: var(--sq-text-3);
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Pictures the model read: pairs and grounded regions
+   ========================================================================== */
+
+.sq-pair {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+}
+
+.sq-pair__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sq-4);
+}
+
+.sq-pair__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+  min-width: 0;
+}
+
+.sq-pair__image {
+  display: block;
+  width: 100%;
+  max-height: 46vh;
+  object-fit: contain;
+  border-radius: var(--sq-radius);
+  border: 1px solid var(--sq-line-strong);
+  background: var(--sq-surface-0);
+  image-rendering: pixelated;
+}
+
+/* The boxes are positioned in fractions of the picture, so the wrapper must
+   be exactly the picture's size. */
+.sq-regions {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.sq-regions__image {
+  margin: 0;
+  image-rendering: pixelated;
+}
+
+.sq-regions__box {
+  position: absolute;
+  border: 2px solid;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.sq-regions__tag,
+.sq-regions__swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: var(--sq-text-2xs);
+  font-weight: 700;
+  color: var(--sq-text-inverse);
+}
+
+.sq-regions__tag {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+}
+
+.sq-regions__legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+  font-size: var(--sq-text-sm);
+}
+
+.sq-regions__legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--sq-3);
+  flex-wrap: wrap;
+}
+
+.sq-regions__label {
+  color: var(--sq-text);
+}
+
+.sq-regions__coords {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}

@@ -96,9 +96,7 @@ def test_scene_classification_plan():
 
 
 def test_image_analysis_plan():
-    understanding, classification = build_task(
-        "Describe what is present in this satellite image."
-    )
+    understanding, classification = build_task("What is in this image?")
 
     plan = Planner().create_plan(
         understanding,
@@ -108,6 +106,24 @@ def test_image_analysis_plan():
     assert plan.task_category == "image_analysis"
     assert len(plan.steps) == 4
     assert plan.steps[2].action == "analyze_image"
+    assert plan.route == "vlm"
+
+
+def test_captioning_plan_routes_to_the_vision_model():
+    understanding, classification = build_task(
+        "Describe what is present in this satellite image."
+    )
+
+    plan = Planner().create_plan(understanding, classification)
+
+    assert plan.task_category == "image_captioning"
+    assert plan.route == "vlm"
+    assert "ground_regions" in [step.action for step in plan.steps]
+
+
+def test_deterministic_tasks_route_to_the_engines():
+    understanding, classification = build_task("Calculate NDVI for this image")
+    assert Planner().create_plan(understanding, classification).route == "deterministic"
 
 
 def test_unknown_plan():

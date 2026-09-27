@@ -25,7 +25,15 @@ def _load_dotenv_file() -> None:
 
     python-dotenv is optional. If it is missing, configuration still works
     through the environment, so this never becomes a hard dependency.
+
+    ``SATQUERY_LOAD_DOTENV=0`` skips the file entirely. The test suite sets it,
+    because a developer's ``.env`` usually holds a real API key, and tests that
+    silently pick it up stop being reproducible and start spending quota.
     """
+    if os.environ.get(ENV_PREFIX + "LOAD_DOTENV", "1").strip().lower() in {
+        "0", "false", "no", "off",
+    }:
+        return
     try:
         from dotenv import load_dotenv
     except ImportError:  # pragma: no cover - only when the extra is absent
@@ -157,6 +165,44 @@ class Settings:
         default_factory=lambda: _env_bool("AGENT_FALLBACK_TO_RULES", True)
     )
 
+    # ---- satellite visual question answering -----------------------
+    #: VQA sends a rendered preview of the user's imagery to the hosted vision
+    #: model. That discloses the imagery to a third party, which is a different
+    #: decision from sending a sentence for query understanding -- so having an
+    #: API key is not enough, and VQA stays off until an operator turns it on.
+    vqa_enabled: bool = field(default_factory=lambda: _env_bool("VQA_ENABLED", False))
+    #: Which vision-language model serves the VLM core:
+    #:
+    #: ``hosted`` -- any OpenAI-compatible endpoint (Groq by default, or a
+    #:              fine-tuned model served by vLLM or TGI). Needs the API key,
+    #:              and the rendered preview leaves the machine.
+    #: ``ollama`` -- a vision model on this machine through Ollama, e.g.
+    #:              ``llama3.2-vision`` or a fine-tuned model imported into it.
+    #:              No key, and nothing leaves the machine.
+    vqa_provider: str = field(
+        default_factory=lambda: _env("VQA_PROVIDER", "hosted").strip().lower()
+    )
+    #: A vision-capable model id. Empty means the provider's default.
+    vqa_model: str = field(default_factory=lambda: _env("VQA_MODEL", "").strip())
+    #: The endpoint for the VLM core. Empty means the provider's default: the
+    #: query-understanding endpoint when hosted, the local Ollama server when not.
+    vqa_base_url: str = field(
+        default_factory=lambda: _env("VQA_BASE_URL", "").strip().rstrip("/")
+    )
+    vqa_timeout_seconds: int = field(
+        default_factory=lambda: _env_int("VQA_TIMEOUT_SECONDS", 60)
+    )
+    #: A benchmark report written by scripts/evaluate_benchmark.py. When it
+    #: covers the configured model, its measured accuracy becomes part of the
+    #: confidence reported with every answer that model gives.
+    vqa_benchmark_report: str = field(
+        default_factory=lambda: _env("VQA_BENCHMARK_REPORT", "").strip()
+    )
+    #: A key for SATQUERY_VQA_BASE_URL when that endpoint needs its own. The
+    #: query-understanding key is never sent to an endpoint other than the one
+    #: it was issued for.
+    vqa_api_key: str = field(default_factory=lambda: _env("VQA_API_KEY", "").strip())
+
     # ---- observability ---------------------------------------------
     log_level: str = field(
         default_factory=lambda: _env("LOG_LEVEL", "INFO").strip().upper()
@@ -183,6 +229,51 @@ class Settings:
         if provider != "auto":
             return provider
         return "hosted" if self.has_agent_api_key else "rules"
+
+    @property
+    def vqa_is_local(self) -> bool:
+        """Whether the vision model runs on this machine."""
+        return self.vqa_provider == "ollama"
+
+    @property
+    def resolved_vqa_base_url(self) -> str:
+        if self.vqa_base_url:
+            return self.vqa_base_url
+        return self.agent_base_url.rstrip("/") if self.vqa_is_local else self.agent_hosted_base_url
+
+    @property
+    def resolved_vqa_model(self) -> str:
+        if self.vqa_model:
+            return self.vqa_model
+        return "llama3.2-vision" if self.vqa_is_local else "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    @property
+    def vqa_uses_agent_endpoint(self) -> bool:
+        """Whether the VLM is served by the same hosted endpoint as query understanding."""
+        if self.vqa_is_local:
+            return False
+        return not self.vqa_base_url or self.vqa_base_url == self.agent_hosted_base_url.rstrip("/")
+
+    @property
+    def resolved_vqa_api_key(self) -> str:
+        """The key sent to the VLM endpoint.
+
+        Its own key when one is set; otherwise the query-understanding key,
+        but only to the endpoint that key belongs to. A self-hosted model --
+        the fine-tuned one, say -- is never handed the Groq key.
+        """
+        if self.vqa_api_key:
+            return self.vqa_api_key
+        return self.agent_api_key if self.vqa_uses_agent_endpoint else ""
+
+    @property
+    def vqa_available(self) -> bool:
+        """The VLM core runs only when an operator enabled it -- and, on the
+        shared hosted endpoint, a key is present. A local model or a
+        self-hosted endpoint may need none."""
+        if not self.vqa_enabled or self.vqa_provider not in {"hosted", "ollama"}:
+            return False
+        return not self.vqa_uses_agent_endpoint or bool(self.resolved_vqa_api_key)
 
     @property
     def upload_directory(self) -> str:

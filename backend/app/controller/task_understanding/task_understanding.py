@@ -1,5 +1,90 @@
+import re
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
+
+from app.controller.task_understanding.context import (
+    FUSION_PATTERN,
+    SAR_PATTERN,
+    extract_context,
+)
+from app.schemas.spatiotemporal import QueryContext
+
+#: Phrases that request a comparison between dates. Multi-word phrases rather
+#: than a bare "change": the singular form appears inside unrelated words, and
+#: a request naming a *subject* of change ("vegetation change") would otherwise
+#: fall through to that subject's index and silently compute the wrong thing on
+#: a two-image upload.
+CHANGE_PHRASES = (
+    "change detection", "detect change", "changes", "changed", "before and after",
+    "compare these two satellite images", "compare images", "change between",
+    "change over", "change from", "vegetation change", "land cover change",
+    "landcover change", "identify change", "find change", "measure change",
+    "compare these two images", "compare the two images", "compare these images",
+    "compare these two radar images", "compare the two radar images",
+    # "What happened between these two images?" names no change word, but
+    # asking about the span between two acquisitions is a comparison.
+    "between these two images", "between the two images", "between these images",
+    "between these two dates", "between the two dates", "between these dates",
+)
+
+#: A count asks for discrete objects -- unless what is being counted is a unit
+#: of area or a pixel, which is a measurement, not a detection.
+COUNT_PATTERN = re.compile(
+    r"\b(how many|count|number of)\b(?!\s+(hectares?|acres?|km|square|sq|percent|"
+    r"per cent|pixels?|metres?|meters?))"
+)
+
+FLOOD_PHRASES = ("flood", "inundat", "waterlogg", "water-logg", "submerged")
+
+#: An explicit request for a description of the whole image.
+CAPTION_PATTERN = re.compile(
+    r"\bcaption\b|\bdescribe\s+(?:this|the)\s+(?:image|scene|picture|area)\b|"
+    r"\bsummari[sz]e\s+(?:this|the)\s+(?:image|scene)\b|"
+    r"\bdescription\s+of\s+(?:this|the)\s+(?:image|scene)\b"
+)
+
+#: Ordered: the first task whose phrases occur in the query wins, so the order
+#: is the precedence. A comparison beats the subject being compared, a count
+#: beats the thing counted, an explicit index name beats a topic word, and a
+#: request to classify beats the classes it names.
+TASK_PHRASES: list[tuple[str, tuple[str, ...]]] = [
+    ("ndvi", ("ndvi",)),
+    ("ndwi", ("ndwi",)),
+    ("ndbi", ("ndbi",)),
+    (
+        "segmentation",
+        ("segment", "segmentation", "land cover", "land-cover", "landcover",
+         "land use", "land-use", "landuse", "lulc"),
+    ),
+    (
+        "classification",
+        ("classify", "classification", "land use classification",
+         "scene classification"),
+    ),
+    ("ndvi", ("vegetation index", "vegetation health", "vegetation")),
+    ("ndwi", ("water index", "water bodies", "waterbody")),
+    # Built-up index. Checked before object detection because these phrases
+    # ask for the *extent* of built-up land, which is an index task, rather
+    # than for discrete building objects.
+    (
+        "ndbi",
+        ("built-up", "built up", "builtup", "built-up index", "impervious",
+         "urban index", "urban expansion"),
+    ),
+    (
+        "object_detection",
+        ("detect buildings", "detect building", "buildings", "roads", "objects",
+         "object detection", "lakes", "ponds", "reservoirs", "settlements",
+         "clearings", "ships", "vehicles", "aircraft", "cars"),
+    ),
+    ("image_captioning", ("describe",)),
+    (
+        "image_analysis",
+        ("what is in this image", "what does this image show",
+         "analyze this image", "analyse this image"),
+    ),
+]
 
 
 class TaskUnderstandingResult(BaseModel):
@@ -13,6 +98,12 @@ class TaskUnderstandingResult(BaseModel):
     requested_output: Optional[str] = None
     temporal_requirement: Optional[str] = None
     confidence: float = 0.0
+    #: The modality of the supplied imagery, once the images are known:
+    #: ``optical``, ``sar``, or ``optical+sar`` for a mixed pair. Filled in by
+    #: :func:`adapt_to_imagery`; ``None`` from the sentence alone.
+    imagery_modality: Optional[str] = None
+    #: Location, time, metric and modality, as the sentence states them.
+    context: QueryContext = Field(default_factory=QueryContext)
 
 
 class TaskUnderstanding:
@@ -52,128 +143,26 @@ class TaskUnderstanding:
             requested_output=requested_output,
             temporal_requirement=temporal_requirement,
             confidence=confidence,
+            context=extract_context(query),
         )
 
     @staticmethod
     def _detect_task_type(query: str) -> Optional[str]:
-        if any(
-            keyword in query
-            for keyword in [
-                "change detection",
-                "detect change",
-                "changes",
-                "changed",
-                "before and after",
-                "compare these two satellite images",
-                "compare images",
-                # Multi-word phrases rather than a bare "change": the singular
-                # form appears inside unrelated words, and a request naming a
-                # *subject* of change ("vegetation change") would otherwise
-                # fall through to that subject's index and silently compute
-                # the wrong thing on a two-image upload.
-                "change between",
-                "change over",
-                "change from",
-                "vegetation change",
-                "land cover change",
-                "landcover change",
-                "identify change",
-                "find change",
-                "measure change",
-                "compare these two images",
-                "compare the two images",
-                "compare these images",
-            ]
-        ):
+        if any(phrase in query for phrase in CHANGE_PHRASES):
             return "change_detection"
-
-        if any(
-                keyword in query
-                for keyword in [
-                    "ndvi",
-                    "vegetation index",
-                    "vegetation health",
-                    "vegetation",
-                ]
-            ):
-                return "ndvi"
-
-        if any(
-                    keyword in query
-                    for keyword in [
-                        "ndwi",
-                        "water index",
-                        "water bodies",
-                        "waterbody",
-                        "water bodies",
-                    ]
-                ):
-                    return "ndwi"
-
-        # Built-up index. Checked before object detection because these
-        # phrases ask for the *extent* of built-up land, which is an index
-        # task, rather than for discrete building objects.
-        if any(
-            keyword in query
-            for keyword in [
-                "ndbi",
-                "built-up",
-                "built up",
-                "builtup",
-                "built-up index",
-                "impervious",
-                "urban index",
-                "urban expansion",
-            ]
-        ):
-            return "ndbi"
-
-        if any(
-                        keyword in query
-                        for keyword in [
-                            "detect buildings",
-                            "detect building",
-                            "buildings",
-                            "roads",
-                            "objects",
-                            "object detection",
-                        ]
-                    ):
-                        return "object_detection"
-
-        if any(
-                            keyword in query
-                            for keyword in [
-                                "segment",
-                                "segmentation",
-                                "land cover",
-                                "land-cover",
-                            ]
-                        ):
-                            return "segmentation"
-
-        if any(
-                                keyword in query
-                                for keyword in [
-                                    "classify",
-                                    "classification",
-                                    "land use classification",
-                                    "scene classification",
-                                ]
-                            ):
-                                return "classification"
-
-        if any(
-                                    keyword in query
-                                    for keyword in [
-                                        "describe",
-                                        "what is in this image",
-                                        "what does this image show",
-                                        "analyze this image",
-                                    ]
-                                ):
-                                    return "image_analysis"
-
+        if FUSION_PATTERN.search(query):
+            return "optical_sar_fusion"
+        if CAPTION_PATTERN.search(query):
+            return "image_captioning"
+        if COUNT_PATTERN.search(query):
+            return "object_detection"
+        if SAR_PATTERN.search(query):
+            return "sar_analysis"
+        if any(phrase in query for phrase in FLOOD_PHRASES):
+            return "flood_mapping"
+        for task, phrases in TASK_PHRASES:
+            if any(phrase in query for phrase in phrases):
+                return task
         return None
 
     @staticmethod
@@ -194,6 +183,15 @@ class TaskUnderstanding:
             "ships",
             "vehicles",
             "aircraft",
+            "cars",
+            "lakes",
+            "ponds",
+            "reservoirs",
+            "rivers",
+            "settlements",
+            "clearings",
+            "bare land",
+            "bare soil",
         ]
 
         found = []
@@ -305,3 +303,54 @@ class TaskUnderstanding:
             score += 0.2
 
         return min(score, 1.0)
+
+
+def adapt_to_imagery(
+    understanding: TaskUnderstandingResult,
+    modalities: set[Optional[str]],
+) -> tuple[TaskUnderstandingResult, Optional[str]]:
+    """Fit a water-mapping request to the kind of imagery actually supplied.
+
+    "Where is the water?" and "what flooded?" have different answers on
+    different sensors: optical imagery measures water with NDWI, and radar
+    imagery has no green or near-infrared band at all, so it maps water from
+    backscatter instead. The sentence cannot tell the two apart; the uploaded
+    files can, so this runs once the images are known.
+
+    Only water mapping is adapted. Any other mismatch -- an NDVI request on a
+    radar scene -- is left for the validator to reject with a clear reason,
+    because there is no equivalent measurement to substitute.
+
+    Returns the (possibly) adapted understanding and a note explaining the
+    adaptation, or ``None`` when nothing changed. Either way the result records
+    the shared modality of the imagery, which is what lets change detection
+    compare two radar scenes by backscatter instead of by a spectral index.
+    """
+    if modalities == {"optical", "sar"}:
+        shared = "optical+sar"
+    else:
+        shared = next(iter(modalities)) if len(modalities) == 1 else None
+    understanding = understanding.model_copy(update={"imagery_modality": shared})
+
+    task = understanding.task_type
+    if shared == "optical+sar" and task in {"ndwi", "flood_mapping", "sar_analysis"}:
+        # One image of each kind is exactly what fusion needs: radar maps
+        # water through cloud, optical confirms it where the sky is clear.
+        return understanding.model_copy(update={"task_type": "optical_sar_fusion"}), (
+            "One optical and one SAR image were supplied, so water was mapped "
+            "from both sensors and fused."
+        )
+    if task not in {"ndwi", "flood_mapping"}:
+        return understanding, None
+
+    if modalities and modalities <= {"sar"}:
+        return understanding.model_copy(update={"task_type": "sar_analysis"}), (
+            "The imagery is SAR, so water was mapped from radar backscatter "
+            "rather than from NDWI, which needs optical bands."
+        )
+    if task == "flood_mapping":
+        return understanding.model_copy(update={"task_type": "ndwi"}), (
+            "The imagery is not SAR, so flooding was mapped as open surface "
+            "water with NDWI."
+        )
+    return understanding, None

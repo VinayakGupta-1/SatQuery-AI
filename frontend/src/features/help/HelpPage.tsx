@@ -53,6 +53,24 @@ export function HelpPage() {
                 → a bi-temporal comparison, needs two images
               </span>
             </li>
+            <li>
+              <span className="sq-help__good">“Classify the land cover.”</span>
+              <span className="sq-help__note">
+                → water, vegetation, built-up and bare land, pixel by pixel
+              </span>
+            </li>
+            <li>
+              <span className="sq-help__good">“How many water bodies are there?”</span>
+              <span className="sq-help__note">
+                → each lake or reservoir as one object, with its area
+              </span>
+            </li>
+            <li>
+              <span className="sq-help__good">“Find areas affected by flooding.”</span>
+              <span className="sq-help__note">
+                → radar backscatter on SAR imagery, a water index on optical
+              </span>
+            </li>
           </ul>
           <p>
             If the question cannot be matched, SatQuery says so and lists what it
@@ -100,16 +118,17 @@ export function HelpPage() {
 
           <h3 className="sq-help__subhead">Nothing to hand?</h3>
           <p>
-            The repository ships a generator for a co-registered pair of
-            synthetic Sentinel-2-style scenes, so the whole system can be tried
-            without downloading anything:
+            The repository ships a generator for four co-registered synthetic
+            scenes — two Sentinel-2-style optical scenes ten months apart, and
+            two Sentinel-1-style radar scenes before and during a flood — so the
+            whole system can be tried without downloading anything:
           </p>
           <pre className="sq-help__code">
             python backend/scripts/make_demo_rasters.py demo_data
           </pre>
           <p>
             They are synthetic but they are real GeoTIFFs — georeferenced,
-            four-band, band-named — so everything computed from them is a
+            band-named, sensor-tagged — so everything computed from them is a
             genuine computation.
           </p>
         </div>
@@ -176,7 +195,7 @@ export function HelpPage() {
           )}
           <p>
             <Link to="/capabilities">See every registered capability</Link>,
-            including those declared but not yet built.
+            including any that are switched off in this deployment.
           </p>
         </div>
       </Panel>
@@ -187,8 +206,29 @@ export function HelpPage() {
             Files stay in this browser until you run an analysis. Running one
             sends them to the SatQuery backend, which stores them under a
             server-generated name for the duration of the task and returns the
-            result. Nothing is sent anywhere else.
+            result.
           </p>
+          {/* Read from the service, because what leaves the backend depends on
+              how the operator configured it. */}
+          {capabilities?.agent_llm_enabled ? (
+            <p>
+              This deployment uses a hosted language model to read your
+              question, so the <strong>text of your question</strong> is sent to
+              it. Your imagery is not.
+            </p>
+          ) : null}
+          {capabilities?.executable.includes('satellite_vqa') ? (
+            <p>
+              Visual question answering is switched on: for a free-form
+              question, a <strong>rendered preview of your image</strong> is
+              sent to a hosted vision model to answer it.
+            </p>
+          ) : null}
+          {capabilities &&
+          !capabilities.agent_llm_enabled &&
+          !capabilities.executable.includes('satellite_vqa') ? (
+            <p>Nothing is sent anywhere else.</p>
+          ) : null}
           <p>
             Results are kept in the service's memory and are lost when it
             restarts. Download anything you need to keep from{' '}

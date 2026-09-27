@@ -215,19 +215,46 @@ def test_too_few_inputs_are_blocked(orchestrator, sentinel2_scene):
 
 
 def test_registered_tool_without_an_implementation_is_blocked(
-    orchestrator, sentinel2_scene
+    orchestrator, sentinel2_scene, monkeypatch
 ):
     # The tool is a legitimate registry entry, but nothing is bound to it yet.
     # It must report that honestly rather than return a placeholder result.
-    request = ExecutionRequest(
-        tool_id="satellite_vqa",
-        input_references=[sentinel2_scene],
+    from app.registry import registry
+    from app.registry.registry import ToolDefinition, ToolType
+
+    monkeypatch.setattr(
+        registry,
+        "TOOLS",
+        registry.TOOLS
+        + [
+            ToolDefinition(
+                tool_id="future_tool", name="Future", description="Not built.",
+                tool_type=ToolType.SEGMENTATION,
+            )
+        ],
     )
+    request = ExecutionRequest(tool_id="future_tool", input_references=[sentinel2_scene])
 
     result = orchestrator.execute(request)
 
     assert result.status == "blocked"
     assert "no execution implementation" in result.error
+    assert result.output is None
+
+
+def test_a_switched_off_tool_is_blocked_with_the_reason(orchestrator, sentinel2_scene):
+    # VQA is bound but off until an operator enables it; the block says how.
+    request = ExecutionRequest(
+        tool_id="satellite_vqa",
+        input_references=[sentinel2_scene],
+        parameters={"question": "Is there a river?"},
+    )
+
+    result = orchestrator.execute(request)
+
+    assert result.status == "blocked"
+    assert "switched off" in result.error
+    assert "SATQUERY_VQA_ENABLED" in result.error
     assert result.output is None
 
 

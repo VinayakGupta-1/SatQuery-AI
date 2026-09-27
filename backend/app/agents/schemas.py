@@ -45,6 +45,31 @@ class AgentTaskPlan(BaseModel):
     provider: str = "rules"
     #: Short human-readable justification. Never executed, only displayed.
     reasoning: str = ""
+    #: Place names in the request. Reported to the user, never geocoded, and
+    #: never used to decide what is computed.
+    locations: list[str] = Field(default_factory=list)
+    #: Measures the request asks for, restricted to a fixed vocabulary.
+    metrics: list[str] = Field(default_factory=list)
+
+    @field_validator("locations", mode="before")
+    @classmethod
+    def _coerce_locations(cls, value: Any) -> list[str]:
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return []
+        return [str(item)[:80] for item in value if isinstance(item, str) and item.strip()][:5]
+
+    @field_validator("metrics", mode="before")
+    @classmethod
+    def _coerce_metrics(cls, value: Any) -> list[str]:
+        from app.controller.task_understanding.context import METRICS
+
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return []
+        return [item for item in dict.fromkeys(str(v).lower() for v in value) if item in METRICS]
 
     @field_validator("confidence")
     @classmethod

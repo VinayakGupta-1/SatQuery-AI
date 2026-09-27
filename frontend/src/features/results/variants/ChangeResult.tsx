@@ -4,10 +4,8 @@ import { RasterViewer } from '../../raster/RasterViewer'
 import { ClassBreakdown } from '../parts/ClassBreakdown'
 import { artifactUrl } from '../../../services/satquery'
 import { formatArea, formatDate, formatIndex, formatPercent } from '../../../utils/format'
+import { CHANGE_CODES, CHANGE_ORDER } from '../../../utils/labels'
 import type { TaskResponse } from '../../../types/api'
-
-/** Change classes always read loss, stable, gain - never alphabetically. */
-const CHANGE_ORDER = ['decrease', 'stable', 'increase']
 
 /**
  * A bi-temporal change result.
@@ -84,8 +82,9 @@ export function ChangeResult({ result }: { result: TaskResponse }) {
               caption={
                 layer === 'difference'
                   ? data.formula
-                  : '0 nodata · 1 decrease · 2 stable · 3 increase'
+                  : 'Pixels whose change exceeded the threshold, in either direction.'
               }
+              classCodes={layer === 'classes' ? CHANGE_CODES : undefined}
             />
           </div>
         </Panel>

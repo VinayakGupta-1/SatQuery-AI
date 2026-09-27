@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Tag } from '../../../components/ui'
 import { AskIcon, CheckIcon, SavedIcon } from '../../../components/icons'
-import { STATUS_META } from '../../../utils/labels'
+import { ENGINE_META, STATUS_META } from '../../../utils/labels'
 import { formatDuration } from '../../../utils/format'
 import { useWorkspace } from '../../../context/workspaceContext'
 import type { TaskResponse } from '../../../types/api'
@@ -25,6 +25,8 @@ export function ResultHeader({ result, durationMs }: ResultHeaderProps) {
   const [justSaved, setJustSaved] = useState(false)
   const status = STATUS_META[result.status]
   const alreadySaved = saved.some((entry) => entry.text === result.query.trim())
+  // Which side of the hybrid core answered, once a capability was chosen.
+  const engine = result.tool ? ENGINE_META[result.route] : null
 
   return (
     <header className="sq-result__head">
@@ -32,6 +34,11 @@ export function ResultHeader({ result, durationMs }: ResultHeaderProps) {
         <div className="sq-result__meta">
           <Tag tone={status.tone}>{status.label}</Tag>
           {result.tool ? <span className="sq-result__tool">{result.tool}</span> : null}
+          {engine ? (
+            <Tag tone={engine.tone} title={engine.description}>
+              {engine.label}
+            </Tag>
+          ) : null}
           {durationMs != null ? (
             <span className="sq-result__timing sq-mono" title="Measured in the browser">
               {formatDuration(durationMs)}

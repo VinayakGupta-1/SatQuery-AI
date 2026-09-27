@@ -103,9 +103,7 @@ def test_scene_classification():
 def test_image_analysis_classification():
     understanding = TaskUnderstanding()
 
-    task = understanding.understand(
-        "Describe what is present in this satellite image."
-    )
+    task = understanding.understand("What is in this image?")
 
     classifier = TaskClassifier()
 
@@ -113,6 +111,17 @@ def test_image_analysis_classification():
 
     assert result.task_category == "image_analysis"
     assert result.source_task_type == "image_analysis"
+
+
+def test_captioning_classification():
+    task = TaskUnderstanding().understand(
+        "Describe what is present in this satellite image."
+    )
+
+    result = TaskClassifier().classify(task)
+
+    assert result.task_category == "image_captioning"
+    assert result.source_task_type == "image_captioning"
 
 
 def test_unknown_task_classification():

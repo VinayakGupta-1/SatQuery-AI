@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDimensions,
   formatIndex,
+  formatLonLat,
   formatResolution,
 } from '../../../utils/format'
 import type { ImageSummary } from '../../../types/api'
@@ -64,6 +65,18 @@ export function ImageryPanel({ images }: { images: ImageSummary[] }) {
                 ) : null}
 
                 {image.crs ? <Definition term="CRS">{image.crs}</Definition> : null}
+
+                {image.bounds_lonlat ? (
+                  <Definition term="Footprint">
+                    <span className="sq-mono sq-imagery__bounds">
+                      {formatLonLat([image.bounds_lonlat[0], image.bounds_lonlat[1]])} to{' '}
+                      {formatLonLat([image.bounds_lonlat[2], image.bounds_lonlat[3]])}
+                    </span>
+                    <span className="sq-imagery__bounds-note">
+                      south-west to north-east corner, in degrees
+                    </span>
+                  </Definition>
+                ) : null}
 
                 {image.resolution ? (
                   <Definition term="Ground sample">

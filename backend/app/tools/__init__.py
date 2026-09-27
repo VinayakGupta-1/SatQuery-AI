@@ -6,14 +6,16 @@ from app.tools.base import (
     ToolExecutionError,
     ToolOutput,
     ToolRequest,
+    UnsupportedRequestError,
 )
 from app.tools.binding import (
     get_implementation,
     has_implementation,
     implemented_tool_ids,
+    unavailable_reason,
     verify_bindings,
 )
-from app.tools.executor import ToolExecutor, ToolNotImplementedError
+from app.tools.executor import ToolExecutor, ToolNotImplementedError, ToolUnavailableError
 
 __all__ = [
     "Artifact",
@@ -23,8 +25,11 @@ __all__ = [
     "ToolNotImplementedError",
     "ToolOutput",
     "ToolRequest",
+    "ToolUnavailableError",
+    "UnsupportedRequestError",
     "get_implementation",
     "has_implementation",
     "implemented_tool_ids",
+    "unavailable_reason",
     "verify_bindings",
 ]

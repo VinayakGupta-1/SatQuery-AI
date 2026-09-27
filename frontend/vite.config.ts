@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 /**
- * The dev server proxies `/api`, `/health` and `/capabilities` to the FastAPI
- * backend. That keeps the browser same-origin in development, so the artifact
+ * The dev server proxies `/api` (and the `/health` and `/analyze` aliases) to
+ * the FastAPI backend. That keeps the browser same-origin in development, so the artifact
  * URLs the backend returns (`/api/tasks/<id>/artifacts/<id>`) can be used
  * verbatim and CORS never enters the picture.
  *
@@ -19,9 +19,11 @@ export default defineConfig({
     proxy: {
       '/api': { target: BACKEND, changeOrigin: true },
       '/health': { target: BACKEND, changeOrigin: true },
-      '/capabilities': { target: BACKEND, changeOrigin: true },
       '/analyze': { target: BACKEND, changeOrigin: true },
-      '/results': { target: BACKEND, changeOrigin: true },
+      // Not '/capabilities' or '/results': those are the app's own pages
+      // (/capabilities, /results/:taskId), and proxying them served the
+      // backend's JSON on a reload or an opened link. The app reads both
+      // through /api.
     },
   },
   build: {

@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 from abc import ABC, abstractmethod
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +25,42 @@ class ToolExecutionError(Exception):
     Tools raise this instead of returning a degraded or approximated result,
     so a failure is always visible rather than silently plausible.
     """
+
+
+class UnsupportedRequestError(ToolExecutionError):
+    """The request asks for something outside what the tool can do.
+
+    Distinct from a failure: nothing went wrong, the tool simply cannot answer
+    this question -- a detector asked for cars in 10 m imagery, for instance.
+    The orchestrator reports it as ``blocked``, so the user is asked for
+    something the system *can* do rather than shown an error.
+    """
+
+
+class StepLog:
+    """The steps a tool took inside one execution, each timed.
+
+    A tool reports these in ``ToolOutput.metadata["steps"]`` and they become
+    the innermost level of the execution trace, so "the tool ran" is broken
+    down into what it actually did and how long each part took.
+    """
+
+    def __init__(self) -> None:
+        self.steps: list[dict[str, Any]] = []
+
+    @contextmanager
+    def step(self, name: str, detail: str = "") -> Iterator[None]:
+        started = time.perf_counter()
+        try:
+            yield
+        finally:
+            self.steps.append(
+                {
+                    "name": name,
+                    "detail": detail,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                }
+            )
 
 
 class Artifact(BaseModel):
@@ -76,6 +114,29 @@ class RemoteSensingTool(ABC):
     @abstractmethod
     def execute(self, request: ToolRequest) -> ToolOutput:
         """Run the tool and return its structured output."""
+
+    def preflight(self, request: ToolRequest) -> None:
+        """Refuse a request this tool cannot serve, before any work is done.
+
+        Called by the orchestrator's policy check, including on a dry run, so
+        it must look only at the parameters: it never reads a pixel and never
+        writes a file. Raise :class:`UnsupportedRequestError` for a request
+        outside the tool's capability, :class:`ToolExecutionError` for an
+        invalid parameter value. The default accepts everything.
+        """
+
+    def available(self) -> bool:
+        """Whether this deployment can run the tool right now.
+
+        Almost every tool is pure computation and always available. A tool
+        that depends on something the operator has to switch on overrides
+        this, and :meth:`unavailable_reason` says what to switch on.
+        """
+        return True
+
+    def unavailable_reason(self) -> str | None:
+        """Why :meth:`available` is false, phrased for an operator."""
+        return None
 
     # -- helpers shared by implementations ---------------------------
     def require_single_input(self, request: ToolRequest) -> str:

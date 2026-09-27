@@ -2,7 +2,7 @@ import { Definition, Definitions, Disclosure, Tag } from '../../../components/ui
 import { InfoIcon } from '../../../components/icons'
 import { stageLabel, stageTone } from '../../../utils/labels'
 import { formatDuration, formatPercent } from '../../../utils/format'
-import type { TaskResponse } from '../../../types/api'
+import type { TaskResponse, TraceEvent } from '../../../types/api'
 
 interface AnalysisDetailsProps {
   result: TaskResponse
@@ -108,7 +108,9 @@ export function AnalysisDetails({ result, durationMs }: AnalysisDetailsProps) {
           </section>
         ) : null}
 
-        {stages.length > 0 ? (
+        {result.trace.length > 0 ? (
+          <ExecutionTrace trace={result.trace} />
+        ) : stages.length > 0 ? (
           <section className="sq-details__block">
             <h4 className="sq-label">Pipeline stages</h4>
             <ul className="sq-details__stages">
@@ -191,5 +193,50 @@ export function AnalysisDetails({ result, durationMs }: AnalysisDetailsProps) {
         ) : null}
       </div>
     </Disclosure>
+  )
+}
+
+/** Server-side stage timings are often sub-millisecond; say so, not "0 ms". */
+function stageTime(milliseconds: number): string {
+  return milliseconds < 1 ? '<1 ms' : formatDuration(milliseconds)
+}
+
+/**
+ * Every stage as it actually ran, in order, timed on the server, with the
+ * tool's own steps nested under execution. Where the stage list says how far
+ * the request got, the trace says what happened at each step on the way.
+ */
+function ExecutionTrace({ trace }: { trace: TraceEvent[] }) {
+  return (
+    <section className="sq-details__block sq-details__block--wide">
+      <h4 className="sq-label">Execution trace</h4>
+      <ol className="sq-trace">
+        {trace.map((event, index) => (
+          <li
+            key={`${event.stage}-${index}`}
+            className={`sq-trace__stage sq-details__stage--${stageTone(event.status)}`}
+          >
+            <div className="sq-trace__row">
+              <span className="sq-details__stage-dot" aria-hidden="true" />
+              <span className="sq-trace__name">{stageLabel(event.stage)}</span>
+              <span className="sq-trace__status sq-mono">{event.status}</span>
+              <span className="sq-trace__time sq-mono">{stageTime(event.duration_ms)}</span>
+            </div>
+            {event.detail ? <p className="sq-trace__detail">{event.detail}</p> : null}
+            {event.steps.length > 0 ? (
+              <ol className="sq-trace__steps">
+                {event.steps.map((step, stepIndex) => (
+                  <li key={`${step.name}-${stepIndex}`}>
+                    <span className="sq-mono sq-trace__step-name">{step.name}</span>
+                    <span className="sq-trace__step-detail">{step.detail}</span>
+                    <span className="sq-mono sq-trace__time">{stageTime(step.duration_ms)}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }

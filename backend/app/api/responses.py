@@ -16,6 +16,7 @@ from app.api.schemas import (
     TaskResponse,
     ValidationIssueOut,
     TaskStatus,
+    UnderstandingOut,
     ValidationReport,
     ValidationResponse,
 )
@@ -52,6 +53,20 @@ def build_explanation(run: PipelineRun) -> ExplanationOut:
             run.configuration.resolved_parameters if run.configuration else {}
         ),
         stage_status=run.stage_status(),
+    )
+
+
+def build_understanding(run: PipelineRun) -> UnderstandingOut:
+    """What the question was read as: where, when, what measure, which sensor."""
+    context = run.understanding.context
+    return UnderstandingOut(
+        intent=run.understanding.task_type,
+        locations=list(context.locations),
+        area=context.aoi.describe() if context.aoi else None,
+        period=context.time_range.describe() if context.time_range else None,
+        metrics=list(context.metrics),
+        query_modality=context.modality,
+        imagery_modality=run.understanding.imagery_modality,
     )
 
 
@@ -133,6 +148,11 @@ def build_task_response(
         ],
         evidence=run.final.evidence,
         confidence=run.final.confidence,
+        route=run.route,
+        understood=build_understanding(run),
+        findings=run.final.findings,
+        confidence_report=run.final.confidence_report,
+        trace=run.trace,
     )
 
 
@@ -145,8 +165,12 @@ def build_validation_response(
         status=TaskStatus(run.status),
         task_category=run.classification.task_category,
         selected_tool=run.selection.selected_tool_id,
-        would_execute=run.validation.valid and run.selection.status == "selected",
+        would_execute=run.would_execute,
+        reason=run.refusal,
         images=images,
         validation=build_validation_report(run.validation),
         explanation=build_explanation(run),
+        route=run.route,
+        understood=build_understanding(run),
+        trace=run.trace,
     )

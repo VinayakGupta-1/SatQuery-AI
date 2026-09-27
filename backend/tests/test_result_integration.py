@@ -113,8 +113,9 @@ def test_result_data_carries_statistics_and_artifacts(integrator, ndvi_execution
 
     assert data["index"] == "NDVI"
     assert data["statistics"]["mean"] == pytest.approx(0.2)
-    assert len(data["artifacts"]) == 1
+    assert len(data["artifacts"]) == 2
     assert data["artifacts"][0].endswith("_ndvi.tif")
+    assert data["artifacts"][1].endswith("_scene_preview.png")
 
 
 def test_evidence_records_provenance(integrator, ndvi_execution, selection):
@@ -230,7 +231,7 @@ def test_blocked_execution_becomes_a_final_result(integrator, sentinel2_scene):
     final = integrator.integrate(task_id="task_1", execution=execution)
 
     assert "blocked before the tool ran" in final.answer
-    assert "no execution implementation" in final.answer
+    assert "switched off" in final.answer
     assert final.results == []
 
 

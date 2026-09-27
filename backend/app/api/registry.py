@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.schemas import ToolSummary
 from app.registry.registry import get_all_tools, get_tool
-from app.tools.binding import has_implementation
+from app.tools.binding import get_implementation, has_implementation, unavailable_reason
 
 router = APIRouter(prefix="/api/tools", tags=["registry"])
 
@@ -32,7 +32,10 @@ def summarise(tool) -> ToolSummary:
         requires_temporal_pair=tool.requires_temporal_pair,
         parameters=dict(tool.parameters),
         enabled=tool.enabled,
+        engine=tool.engine.value,
         implemented=has_implementation(tool.tool_id),
+        bound=get_implementation(tool.tool_id) is not None,
+        availability_note=unavailable_reason(tool.tool_id),
     )
 
 

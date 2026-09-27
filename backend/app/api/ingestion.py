@@ -20,6 +20,7 @@ from app.api.schemas import ImageSummary
 from app.config.settings import Settings
 from app.storage.artifacts import StorageError, get_artifact_store
 from app.schemas.inputs import ImageInput, ImageMetadata
+from app.tools.raster.aoi import footprint_lonlat
 from app.tools.raster.inspection import describe_dataset
 from app.tools.raster.io import open_raster
 from app.tools.raster.model import RasterDataset, RasterError
@@ -184,5 +185,6 @@ def describe_upload(path: str, image_id: str, display_name: str) -> tuple[ImageI
         acquisition_date=(
             metadata.acquisition_date.isoformat() if metadata.acquisition_date else None
         ),
+        bounds_lonlat=footprint_lonlat(dataset),
     )
     return image, summary

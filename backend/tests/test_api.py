@@ -55,9 +55,11 @@ def test_health_reports_real_capabilities(client):
     body = client.get("/api/health").json()
 
     assert body["status"] == "ok"
-    assert body["registered_tools"] == 8
+    assert body["registered_tools"] == 11
     assert set(body["implemented_tools"]) == {
         "ndvi", "ndwi", "ndbi", "change_detection",
+        "land_cover_classification", "object_detection", "sar_analysis",
+        "optical_sar_fusion",
     }
     assert body["backend"]["raster_backend"] in ("rasterio", "builtin")
 
@@ -65,15 +67,17 @@ def test_health_reports_real_capabilities(client):
 def test_registry_is_published(client):
     tools = client.get("/api/tools").json()
 
-    assert len(tools) == 8
+    assert len(tools) == 11
     ndvi = next(tool for tool in tools if tool["tool_id"] == "ndvi")
     assert ndvi["implemented"] is True
     assert ndvi["required_bands"] == ["red", "nir"]
     assert "red_band" in ndvi["parameters"]
 
-    # A registered but unbuilt capability is labelled honestly.
+    # A capability that cannot run here is labelled honestly, with the reason.
     vqa = next(tool for tool in tools if tool["tool_id"] == "satellite_vqa")
     assert vqa["implemented"] is False
+    assert "SATQUERY_VQA_ENABLED" in vqa["availability_note"]
+    assert ndvi["availability_note"] is None
 
 
 def test_registry_can_be_filtered_to_implemented_tools(client):
@@ -81,6 +85,8 @@ def test_registry_can_be_filtered_to_implemented_tools(client):
 
     assert {tool["tool_id"] for tool in tools} == {
         "ndvi", "ndwi", "ndbi", "change_detection",
+        "land_cover_classification", "object_detection", "sar_analysis",
+        "optical_sar_fusion",
     }
 
 
@@ -176,7 +182,8 @@ def test_artifact_is_downloadable_and_correct(client, scene_bytes, tmp_path):
         files=[upload(scene_bytes)],
     ).json()
 
-    assert len(body["artifacts"]) == 1
+    # The result raster, plus the picture of the scene the map overlays it on.
+    assert [a["kind"] for a in body["artifacts"]] == ["raster", "image"]
     artifact = body["artifacts"][0]
     assert artifact["kind"] == "raster"
     assert artifact["url"].startswith(f"/api/tasks/{body['task_id']}/artifacts/")
@@ -292,7 +299,7 @@ def test_unimplemented_capability_is_reported_not_faked(client, scene_bytes):
 
     assert body["explanation"]["selected_tool"] == "satellite_vqa"
     assert body["outcome"] == "blocked"
-    assert "no execution implementation" in body["answer"]
+    assert "switched off" in body["answer"]
     assert body["artifacts"] == []
 
 
@@ -471,3 +478,116 @@ def test_the_same_files_without_as_scene_are_separate_images(client, band_files)
     # validator refuses rather than guessing.
     assert len(body["images"]) == 2
     assert body["outcome"] == "rejected"
+
+
+# ============================================================
+# THE DRY RUN NEVER COMPUTES, AND LEAVES NOTHING BEHIND
+# ============================================================
+def _files_under(path):
+    import os
+
+    if not os.path.isdir(path):
+        return []
+    return [os.path.join(root, name) for root, _, names in os.walk(path) for name in names]
+
+
+def test_validate_endpoint_never_runs_the_tool(client, scene_bytes):
+    import os
+    import tempfile
+
+    storage = get_settings().storage_root
+    default_outputs = os.path.join(tempfile.gettempdir(), "satquery_outputs")
+    before = set(_files_under(default_outputs))
+
+    body = client.post(
+        "/api/tasks/validate",
+        data={"query": "Calculate NDVI"},
+        files=[upload(scene_bytes)],
+    ).json()
+
+    assert body["would_execute"] is True
+    assert body["reason"] is None
+    assert body["explanation"]["stage_status"]["execution"] == "authorised"
+    # Nothing computed anywhere, and the uploads it only needed to inspect
+    # are gone.
+    assert _files_under(os.path.join(storage, "outputs")) == []
+    assert _files_under(os.path.join(storage, "uploads")) == []
+    assert set(_files_under(default_outputs)) == before
+
+
+def test_validate_endpoint_says_why_a_request_would_not_run(client, scene_bytes):
+    body = client.post(
+        "/api/tasks/validate",
+        data={"query": "Detect buildings in this image"},
+        files=[upload(scene_bytes)],
+    ).json()
+
+    assert body["selected_tool"] == "object_detection"
+    assert body["would_execute"] is False
+    assert "sub-metre imagery" in body["reason"]
+
+
+def test_validate_endpoint_explains_a_switched_off_capability(client, scene_bytes):
+    body = client.post(
+        "/api/tasks/validate",
+        data={"query": "What is in this image?"},
+        files=[upload(scene_bytes)],
+    ).json()
+
+    assert body["would_execute"] is False
+    assert body["reason"]
+
+
+def test_a_rejected_upload_leaves_no_orphaned_files(client, scene_bytes):
+    import os
+
+    response = client.post(
+        "/api/tasks",
+        data={"query": "Calculate NDVI"},
+        files=[
+            upload(scene_bytes),
+            ("files", ("notes.txt", io.BytesIO(b"not a raster"), "text/plain")),
+        ],
+    )
+
+    assert response.status_code == 400
+    uploads = os.path.join(get_settings().storage_root, "uploads")
+    assert _files_under(uploads) == []
+
+
+# ============================================================
+# VISUAL QUESTION ANSWERING, WHEN AN OPERATOR ENABLES IT
+# ============================================================
+def test_a_question_is_answered_by_the_vision_model_when_enabled(
+    client, scene_bytes, monkeypatch
+):
+    from app.tools.vlm import client as vqa_client
+
+    monkeypatch.setenv("SATQUERY_VQA_ENABLED", "true")
+    monkeypatch.setenv("SATQUERY_AGENT_API_KEY", "test-key-not-real")
+    reset_settings()
+    monkeypatch.setattr(
+        vqa_client,
+        "post_json",
+        lambda url, payload, key, timeout: {
+            "choices": [{"message": {"content": "A river runs across the scene."}}]
+        },
+    )
+
+    body = client.post(
+        "/api/tasks",
+        data={"query": "Is there a river in this image?"},
+        files=[upload(scene_bytes)],
+    ).json()
+
+    assert body["status"] == "success"
+    assert body["tool"] == "satellite_vqa"
+    assert body["output_type"] == "text"
+    assert body["answer"].startswith("A river runs across the scene.")
+    assert "not a measurement" in body["answer"]
+
+    preview = next(a for a in body["artifacts"] if a["artifact_id"] == "vqa_preview")
+    response = client.get(preview["url"])
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content[:8] == b"\x89PNG\r\n\x1a\n"

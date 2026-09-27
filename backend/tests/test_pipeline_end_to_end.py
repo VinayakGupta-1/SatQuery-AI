@@ -97,7 +97,8 @@ def test_pipeline_produces_a_real_ndvi_raster(pipeline, sentinel2_scene, outputs
     )
 
     artifacts = run.execution.execution_metadata["artifacts"]
-    assert len(artifacts) == 1
+    assert len(artifacts) == 2
+    assert artifacts[1].endswith("_scene_preview.png")
 
     result = open_raster(artifacts[0])
     assert result.band_at(1).to_list() == pytest.approx(SENTINEL2_EXPECTED_NDVI, abs=1e-6)
@@ -347,8 +348,8 @@ def test_change_detection_runs_through_the_whole_pipeline(
     assert run.final.execution_summary.tools_used == ["change_detection"]
     assert "0 of 4 comparable pixels changed" in run.final.answer
 
-    # A difference raster and a classification raster.
-    assert len(run.execution.execution_metadata["artifacts"]) == 2
+    # A difference raster, a classification raster and the scene picture.
+    assert len(run.execution.execution_metadata["artifacts"]) == 3
 
 
 def test_change_detection_finds_real_change(pipeline, raster_factory, outputs):
@@ -398,7 +399,7 @@ def test_an_unbuilt_capability_is_reported_not_faked(
 
     assert run.selection.selected_tool_id == "satellite_vqa"
     assert run.execution.status == "blocked"
-    assert "no execution implementation" in run.execution.error
+    assert "switched off" in run.execution.error
     assert "blocked before the tool ran" in run.final.answer
     assert run.final.results == []
 

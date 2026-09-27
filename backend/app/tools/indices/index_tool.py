@@ -14,14 +14,18 @@ from typing import Any
 from app.tools.base import (
     Artifact,
     RemoteSensingTool,
+    StepLog,
     ToolExecutionError,
     ToolOutput,
     ToolRequest,
 )
 from app.tools.indices.common import NODATA, classify_ranges
 from app.tools.indices.spec import IndexSpec, compute_index
-from app.tools.raster.io import backend_report, open_raster, write_raster
+from app.tools.raster.aoi import footprint_lonlat, open_for_analysis
+from app.tools.raster.io import backend_report, write_raster
+from app.tools.raster.locate import range_locations
 from app.tools.raster.model import RasterError
+from app.tools.raster.render import write_preview
 
 
 class NormalizedDifferenceIndexTool(RemoteSensingTool):
@@ -34,37 +38,40 @@ class NormalizedDifferenceIndexTool(RemoteSensingTool):
 
     def execute(self, request: ToolRequest) -> ToolOutput:
         path = self.require_single_input(request)
-
-        try:
-            dataset = open_raster(path)
-        except RasterError as error:
-            raise ToolExecutionError(str(error)) from error
-
         parameters = request.parameters
+        log = StepLog()
+
+        with log.step("open", "read and clip the imagery"):
+            dataset, aoi = open_for_analysis(path, parameters)
         sensor = parameters.get("sensor") or dataset.metadata.get("sensor")
 
-        computation = compute_index(dataset, self.spec, parameters, sensor)
+        with log.step("compute", f"{self.spec.name} per pixel"):
+            computation = compute_index(dataset, self.spec, parameters, sensor)
         statistics = computation.statistics
 
-        classes = classify_ranges(computation.band, self.spec.interpretation_ranges)
-        attach_areas(classes, statistics, dataset)
+        with log.step("summarise", "classes, areas and where they lie"):
+            classes = classify_ranges(computation.band, self.spec.interpretation_ranges)
+            attach_areas(classes, statistics, dataset)
+            locations = range_locations(computation.band, self.spec.interpretation_ranges, dataset)
 
         artifacts: list[Artifact] = []
         if parameters.get("write_raster", True):
-            artifacts.append(
-                write_result_raster(
-                    request=request,
-                    dataset=dataset,
-                    band=computation.band,
-                    source_path=path,
-                    suffix=self.spec.name.lower(),
-                    artifact_id=f"{self.tool_id}_raster",
-                    description=(
-                        f"Single-band float32 {self.spec.name} raster on the source "
-                        "grid; pixels that could not be computed are nodata (NaN)."
-                    ),
+            with log.step("write", "index raster and scene picture"):
+                artifacts.append(
+                    write_result_raster(
+                        request=request,
+                        dataset=dataset,
+                        band=computation.band,
+                        source_path=path,
+                        suffix=self.spec.name.lower(),
+                        artifact_id=f"{self.tool_id}_raster",
+                        description=(
+                            f"Single-band float32 {self.spec.name} raster on the source "
+                            "grid; pixels that could not be computed are nodata (NaN)."
+                        ),
+                    )
                 )
-            )
+                artifacts.append(write_preview(request, dataset, path))
 
         return ToolOutput(
             tool_id=self.tool_id,
@@ -76,6 +83,7 @@ class NormalizedDifferenceIndexTool(RemoteSensingTool):
                 "negative_band": computation.negative.name,
                 "interpretation": self.spec.interpretation_note,
                 "classes": classes,
+                "class_locations": locations,
             },
             statistics=statistics,
             artifacts=artifacts,
@@ -85,6 +93,9 @@ class NormalizedDifferenceIndexTool(RemoteSensingTool):
                 "scale": float(parameters.get("scale") or 1.0),
                 "offset": float(parameters.get("offset") or 0.0),
                 "mask": computation.mask_report,
+                "aoi": aoi,
+                "footprint_lonlat": footprint_lonlat(dataset),
+                "steps": log.steps,
                 **backend_report(),
             },
         )

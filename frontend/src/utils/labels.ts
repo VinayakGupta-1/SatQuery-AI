@@ -8,7 +8,7 @@
  * instead of appearing raw.
  */
 
-import type { OutputType, TaskStatus, ToolType } from '../types/api'
+import type { ConfidenceReport, Engine, OutputType, TaskStatus, ToolType } from '../types/api'
 
 /** `bare_soil_or_built_up` -> `Bare soil or built up`. */
 export function humanise(value: string): string {
@@ -37,6 +37,56 @@ const CLASS_LABELS: Record<string, string> = {
   increase: 'Increase',
   stable: 'Stable',
   decrease: 'Decrease',
+  // Land cover
+  bare_soil: 'Bare soil',
+  bare_or_built_up: 'Bare or built-up',
+  // Object detection
+  water_body: 'Water body',
+  vegetation_patch: 'Vegetation patch',
+  built_up_cluster: 'Built-up cluster',
+  bare_land_patch: 'Bare land patch',
+  bare_or_built_up_patch: 'Bare or built-up patch',
+  // Optical + SAR fusion
+  water_both: 'Water, both sensors',
+  water_radar_only: 'Water, radar only',
+  water_optical_only: 'Water, optical only',
+  water_under_cloud: 'Water under cloud',
+  land: 'Land',
+}
+
+/** Change classes always read loss, stable, gain - never alphabetically. */
+export const CHANGE_ORDER = ['decrease', 'stable', 'increase']
+
+/** The codes the change tool writes into its classification raster. */
+export const CHANGE_CODES: Record<string, string> = { 1: 'decrease', 2: 'stable', 3: 'increase' }
+
+/** What a task id is called when the question's reading is shown back. */
+const TASK_LABELS: Record<string, string> = {
+  ndvi: 'Vegetation (NDVI)',
+  ndwi: 'Water (NDWI)',
+  ndbi: 'Built-up land (NDBI)',
+  flood_mapping: 'Flood mapping',
+  sar_analysis: 'Radar water mapping',
+  optical_sar_fusion: 'Optical + SAR fusion',
+  change_detection: 'Change detection',
+  change_vqa: 'A question about change',
+  image_captioning: 'Scene description',
+  image_analysis: 'A question about the image',
+  object_detection: 'Object detection',
+  segmentation: 'Land-cover segmentation',
+  classification: 'Land-cover classification',
+}
+
+export function taskLabel(key: string): string {
+  return TASK_LABELS[key] ?? humanise(key)
+}
+
+/** `optical+sar` -> `Optical + SAR`. */
+export function modalityLabel(value: string): string {
+  return value
+    .split('+')
+    .map((part) => (part.toLowerCase() === 'sar' ? 'SAR' : humanise(part)))
+    .join(' + ')
 }
 
 export function classLabel(key: string): string {
@@ -65,6 +115,19 @@ const CLASS_COLOURS: Record<string, string> = {
   increase: '#56b98d',
   stable: '#4a5666',
   decrease: '#d97a6d',
+  bare_soil: '#b39b72',
+  bare_or_built_up: '#a08a6c',
+  water_body: '#3c72a4',
+  vegetation_patch: '#4f8f55',
+  built_up_cluster: '#b8763f',
+  bare_land_patch: '#b39b72',
+  bare_or_built_up_patch: '#a08a6c',
+  // Fusion: the blues darken with how many sensors confirm the water.
+  water_both: '#2f6496',
+  water_radar_only: '#6fa3c6',
+  water_optical_only: '#8a9fd6',
+  water_under_cloud: '#8fd0e2',
+  land: '#4a5666',
 }
 
 export function classColour(key: string): string {
@@ -85,12 +148,15 @@ export const STATUS_META: Record<
 /** Pipeline stage names, for the advanced disclosure. */
 const STAGE_LABELS: Record<string, string> = {
   understanding: 'Understanding',
+  adaptation: 'Imagery adaptation',
   classification: 'Classification',
   planning: 'Planning',
+  input_requirements: 'Input requirements',
   validation: 'Input validation',
   tool_selection: 'Capability selection',
   parameter_configuration: 'Parameter resolution',
   execution: 'Execution',
+  result_integration: 'Result integration',
 }
 
 export function stageLabel(key: string): string {
@@ -120,6 +186,61 @@ export const TOOL_TYPE_LABELS: Record<ToolType, string> = {
   segmentation: 'Segmentation',
   vqa: 'Visual question answering',
   sar_analysis: 'SAR analysis',
+  fusion: 'Optical + SAR fusion',
+  captioning: 'Captioning and grounding',
+}
+
+/**
+ * The two sides of the hybrid core, and the route that uses both.
+ *
+ * Said on every answer, because "computed" and "read by a model" deserve
+ * different degrees of trust and the reader should never have to guess which
+ * one they are looking at.
+ */
+export const ENGINE_META: Record<
+  Engine,
+  { label: string; tone: 'success' | 'info' | 'accent'; description: string }
+> = {
+  deterministic: {
+    label: 'Deterministic engine',
+    tone: 'success',
+    description: 'Computed from the pixels by exact arithmetic. Reproducible to the bit.',
+  },
+  vlm: {
+    label: 'Vision-language model',
+    tone: 'info',
+    description:
+      "A vision-language model's reading of a rendered picture of the scene, not a measurement.",
+  },
+  hybrid: {
+    label: 'Measured, then described',
+    tone: 'accent',
+    description:
+      'Change was measured deterministically first; a vision-language model then described it with those numbers in hand.',
+  },
+}
+
+/** How each confidence level is announced. */
+export const CONFIDENCE_META: Record<
+  ConfidenceReport['level'],
+  { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }
+> = {
+  high: { label: 'High confidence', tone: 'success' },
+  medium: { label: 'Medium confidence', tone: 'warning' },
+  low: { label: 'Low confidence', tone: 'danger' },
+  unrated: { label: 'Unrated', tone: 'neutral' },
+}
+
+/** Confidence factor names, as a reader would say them. */
+const FACTOR_LABELS: Record<string, string> = {
+  interpretation: 'Question interpretation',
+  coverage: 'Observed coverage',
+  agreement: 'Sensor agreement',
+  model_accuracy: 'Model benchmark accuracy',
+}
+
+export function factorLabel(name: string): string {
+  return FACTOR_LABELS[name] ?? humanise(name)
 }
 
 /** What a result of each output type is called in the interface. */

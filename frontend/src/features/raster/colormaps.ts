@@ -143,6 +143,27 @@ export function buildLookup(ramp: Ramp): Uint8ClampedArray {
   return table
 }
 
+/**
+ * Colours for a class raster: pixel value -> RGB.
+ *
+ * The colour of each class comes from the same function the legend and the
+ * class breakdown use, so a class is one colour everywhere on the screen.
+ */
+export function buildPalette(
+  codes: Record<string, string>,
+  colourOf: (key: string) => string,
+): Map<number, [number, number, number]> {
+  const palette = new Map<number, [number, number, number]>()
+  for (const [code, key] of Object.entries(codes)) {
+    const hex = colourOf(key).replace('#', '')
+    const value = Number.parseInt(hex.length === 3 ? hex.replace(/./g, '$&$&') : hex, 16)
+    if (Number.isFinite(value)) {
+      palette.set(Number(code), [(value >> 16) & 255, (value >> 8) & 255, value & 255])
+    }
+  }
+  return palette
+}
+
 /** CSS gradient for the legend strip, matching the ramp exactly. */
 export function rampGradient(ramp: Ramp): string {
   const stops = ramp.stops.map(

@@ -134,7 +134,11 @@ def test_overlong_free_text_is_truncated():
 def test_only_executable_tools_are_offered_to_a_provider():
     """The allowlist a model is shown never includes something that cannot run."""
     allowed = allowed_tool_ids()
-    assert allowed == ["change_detection", "ndbi", "ndvi", "ndwi"]
+    assert allowed == [
+        "change_detection", "land_cover_classification", "ndbi", "ndvi",
+        "ndwi", "object_detection", "optical_sar_fusion", "sar_analysis",
+    ]
+    # VQA is bound but switched off by default, so a model may not name it.
     assert "satellite_vqa" not in allowed
 
 

@@ -17,12 +17,15 @@ from datetime import date, datetime
 from typing import Any
 
 from app.schemas.inputs import ImageMetadata
+from app.tools.raster.aoi import dataset_bounds
 from app.tools.raster.bands import canonical_name, normalise
 from app.tools.raster.io import open_raster
 from app.tools.raster.model import RasterDataset
 
-#: Polarisation channels that identify a SAR product.
-SAR_POLARISATIONS = {"vv", "vh", "hh", "hv"}
+#: Polarisation channels that identify a SAR product. RH and RV are the
+#: compact-polarimetry channels of ISRO's RISAT-1 (circular transmit,
+#: horizontal and vertical receive).
+SAR_POLARISATIONS = {"vv", "vh", "hh", "hv", "rh", "rv"}
 
 #: TIFF/GDAL tags that may carry an acquisition timestamp.
 DATE_TAGS = ("ACQUISITION_DATE", "TIFFTAG_DATETIME", "DATETIME")
@@ -125,4 +128,5 @@ def describe_dataset(dataset: RasterDataset) -> ImageMetadata:
         width=dataset.width,
         height=dataset.height,
         bands=logical_band_names(dataset),
+        bounds=dataset_bounds(dataset),
     )

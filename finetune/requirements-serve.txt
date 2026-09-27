@@ -1,0 +1,10 @@
+# What finetune/serve.py needs. Install PyTorch first, with CUDA if you have
+# an NVIDIA GPU: https://pytorch.org/get-started/locally/
+transformers==4.51.3
+peft==0.15.2
+accelerate==1.6.0
+fastapi
+uvicorn
+pillow
+# Only for --load-in-4bit on a small GPU:
+# bitsandbytes

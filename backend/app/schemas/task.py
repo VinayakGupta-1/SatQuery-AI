@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.spatiotemporal import AreaOfInterest, TimeRange
+
 
 class TaskType(str, Enum):
     SINGLE_IMAGE_VQA = "single_image_vqa"
@@ -56,6 +58,15 @@ class InputRequirements(BaseModel):
 
     requires_optical_input: bool = False
     requires_sar_input: bool = False
+
+    #: Exactly one optical and one SAR image, as fusion needs.
+    requires_optical_and_sar_pair: bool = False
+    #: The images must be acquired within this many days of each other.
+    max_days_between_images: int | None = None
+    #: The period the question names; acquisition dates must fall inside it.
+    time_range: TimeRange | None = None
+    #: The area the question names; it must overlap every image.
+    aoi: AreaOfInterest | None = None
 
 
 class TaskParameters(BaseModel):

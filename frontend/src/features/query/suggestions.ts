@@ -15,10 +15,37 @@ interface Suggestion {
   images: number
 }
 
+// Ordered for breadth: the first example of each capability is what the
+// composer shows first, so the row reads as a tour of what can be asked.
 const SUGGESTIONS: Suggestion[] = [
   {
     toolId: 'ndvi',
     text: 'How healthy is the vegetation in this scene?',
+    images: 1,
+  },
+  {
+    toolId: 'land_cover_classification',
+    text: 'Classify the land cover in this image.',
+    images: 1,
+  },
+  {
+    toolId: 'change_detection',
+    text: 'Compare these two dates and show me what changed.',
+    images: 2,
+  },
+  {
+    toolId: 'object_detection',
+    text: 'How many water bodies are in this scene?',
+    images: 1,
+  },
+  {
+    toolId: 'sar_analysis',
+    text: 'Find the areas affected by flooding in this radar image.',
+    images: 1,
+  },
+  {
+    toolId: 'satellite_vqa',
+    text: 'Is there a river or a reservoir in this image?',
     images: 1,
   },
   {
@@ -30,11 +57,6 @@ const SUGGESTIONS: Suggestion[] = [
     toolId: 'ndbi',
     text: 'Where are the built-up areas in this scene?',
     images: 1,
-  },
-  {
-    toolId: 'change_detection',
-    text: 'Compare these two dates and show me what changed.',
-    images: 2,
   },
   {
     toolId: 'change_detection',

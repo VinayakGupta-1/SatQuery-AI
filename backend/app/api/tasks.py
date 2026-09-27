@@ -38,6 +38,13 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 pipeline = SatQueryPipeline()
 
+#: Content types for the files tools write. Anything else is served as bytes.
+ARTIFACT_MEDIA_TYPES = {
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".png": "image/png",
+}
+
 
 def _parse_parameters(raw: str | None) -> dict[str, Any]:
     """Parse the optional user-supplied parameter JSON object."""
@@ -63,7 +70,24 @@ async def _ingest(
     With ``as_scene`` the uploads are treated as bands of one image, which is
     how real products arrive -- one file per band, possibly at different
     resolutions. Otherwise each file is a separate image.
+
+    A rejected upload takes the whole task's files with it: when the third of
+    three files fails, the first two would otherwise stay on disk forever,
+    belonging to a task that was never recorded.
     """
+    try:
+        return await _ingest_files(files, task_id, as_scene, sensor)
+    except HTTPException:
+        get_artifact_store().delete_task(task_id)
+        raise
+
+
+async def _ingest_files(
+    files: list[UploadFile],
+    task_id: str,
+    as_scene: bool,
+    sensor: str | None,
+) -> tuple[list[ImageInput], list[ImageSummary]]:
     settings = get_settings()
 
     if not files:
@@ -180,11 +204,17 @@ async def validate_task(
     task_id = f"check_{uuid.uuid4().hex[:12]}"
     images, summaries = await _ingest(files, task_id, as_scene, sensor)
 
-    # Running the pipeline with no output directory still stops at validation
-    # whenever the inputs are wrong; when they are right we discard the run
-    # rather than execute, by asking only for the dry-run response.
-    run = pipeline.run(query=query.strip(), images=images, task_id=task_id)
-    return build_validation_response(run, summaries)
+    # Every stage runs, including the Registry's execution policy, and then
+    # the pipeline stops short of calling the tool. The uploads were only
+    # needed to read their metadata, and no task is recorded that could refer
+    # to them later, so they are removed rather than left to accumulate.
+    try:
+        run = pipeline.run(
+            query=query.strip(), images=images, task_id=task_id, execute=False
+        )
+        return build_validation_response(run, summaries)
+    finally:
+        get_artifact_store().delete_task(task_id)
 
 
 @router.get("", response_model=list[TaskListEntry])
@@ -228,9 +258,10 @@ def download_artifact(task_id: str, artifact_id: str) -> FileResponse:
     if not os.path.exists(path):
         raise HTTPException(410, f"Artifact '{artifact_id}' is no longer on disk.")
 
-    return FileResponse(
-        path, media_type="image/tiff", filename=os.path.basename(path)
+    media_type = ARTIFACT_MEDIA_TYPES.get(
+        os.path.splitext(path)[1].lower(), "application/octet-stream"
     )
+    return FileResponse(path, media_type=media_type, filename=os.path.basename(path))
 
 
 # ============================================================

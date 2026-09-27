@@ -417,7 +417,8 @@ def test_raster_writing_can_be_skipped(tool, forest_pair, tmp_path):
 def test_output_rasters_keep_the_source_georeferencing(tool, forest_pair, tmp_path):
     output = run(tool, forest_pair, tmp_path)
 
-    for artifact in output.artifacts:
+    # The scene picture is a PNG for display; every raster keeps the grid.
+    for artifact in (a for a in output.artifacts if a.kind == "raster"):
         result = open_raster(artifact.path)
         assert result.georeference.crs == "EPSG:32643"
         assert result.georeference.pixel_size == (10.0, 10.0)

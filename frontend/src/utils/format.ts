@@ -174,6 +174,16 @@ export function formatRelative(iso: string | null | undefined): string {
   return formatDate(iso)
 }
 
+/** `[79.08, 21.14]` -> `21.1400° N, 79.0800° E`, as the backend narrates it. */
+export function formatLonLat(lonlat: readonly number[] | null | undefined): string {
+  if (!lonlat || lonlat.length < 2) return '--'
+  const [lon, lat] = lonlat
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return '--'
+  return `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}° ${
+    lon >= 0 ? 'E' : 'W'
+  }`
+}
+
 /** Round-trip duration, measured in the browser. */
 export function formatDuration(milliseconds: number | null | undefined): string {
   if (milliseconds == null || !Number.isFinite(milliseconds)) return '--'

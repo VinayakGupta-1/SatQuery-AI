@@ -56,7 +56,32 @@ LANDSAT7_BANDS: dict[str, str] = {
     "b5": SWIR1, "b6": THERMAL, "b7": SWIR2, "b8": PANCHROMATIC,
 }
 
+#: ISRO Cartosat-2 series multispectral (MX, 1.6 m): four bands from blue to
+#: NIR. Note B4 is near-infrared here, where Sentinel-2's B4 is red -- which is
+#: why numeric band names are resolved per sensor.
+CARTOSAT2_BANDS: dict[str, str] = {"b1": BLUE, "b2": GREEN, "b3": RED, "b4": NIR}
+
+#: ISRO Resourcesat-2/2A: LISS-III (23.5 m), LISS-IV (5.8 m) and AWiFS (56 m)
+#: share one numbering, B2 green to B5 SWIR (LISS-IV stops at B4).
+RESOURCESAT_BANDS: dict[str, str] = {"b2": GREEN, "b3": RED, "b4": NIR, "b5": SWIR1}
+
 SENSOR_BAND_TABLES: dict[str, dict[str, str]] = {
+    "cartosat2s": CARTOSAT2_BANDS,
+    "cartosat-2s": CARTOSAT2_BANDS,
+    "cartosat2": CARTOSAT2_BANDS,
+    "cartosat-2": CARTOSAT2_BANDS,
+    "cartosat": CARTOSAT2_BANDS,
+    "resourcesat2": RESOURCESAT_BANDS,
+    "resourcesat-2": RESOURCESAT_BANDS,
+    "resourcesat2a": RESOURCESAT_BANDS,
+    "resourcesat": RESOURCESAT_BANDS,
+    "liss3": RESOURCESAT_BANDS,
+    "liss-iii": RESOURCESAT_BANDS,
+    "liss_iii": RESOURCESAT_BANDS,
+    "liss4": RESOURCESAT_BANDS,
+    "liss-iv": RESOURCESAT_BANDS,
+    "liss_iv": RESOURCESAT_BANDS,
+    "awifs": RESOURCESAT_BANDS,
     "sentinel2": SENTINEL2_BANDS,
     "sentinel-2": SENTINEL2_BANDS,
     "s2": SENTINEL2_BANDS,
@@ -131,8 +156,13 @@ def canonical_name(name: str, sensor: str | None = None) -> str | None:
 
     if sensor:
         table = SENSOR_BAND_TABLES.get(normalise(sensor))
-        if table and key in table:
-            return table[key]
+        if table is not None:
+            if key in table:
+                return table[key]
+            # A known sensor that has no band by this number: another sensor's
+            # meaning for it would be a guess, and a wrong one.
+            if BAND_IDENTIFIER.match(key):
+                return None
 
     if key in AMBIGUOUS_BAND_IDS:
         return None

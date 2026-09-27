@@ -104,7 +104,7 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
           ref={textareaRef}
           className="sq-composer__input"
           rows={2}
-          placeholder="Ask about vegetation, water, built-up land, or what changed between two dates."
+          placeholder="Ask about vegetation, water, land cover, flooding, or what changed between two dates."
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -197,7 +197,7 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
               ))}
             </ul>
           ) : (
-            (checkResult.explanation.selection_reason ||
+            (checkResult.reason ||
               'The request could not be matched to an available capability.')
           )}
         </Notice>

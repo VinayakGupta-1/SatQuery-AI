@@ -3,13 +3,18 @@ import { ResultHeader } from './parts/ResultHeader'
 import { AnalysisDetails } from './parts/AnalysisDetails'
 import { ImageryPanel } from './parts/ImageryPanel'
 import { ArtifactList } from './parts/ArtifactList'
+import { UnderstandingStrip } from './parts/UnderstandingStrip'
+import { Findings } from './parts/Findings'
+import { ConfidencePanel } from './parts/ConfidencePanel'
 import { IndexResult } from './variants/IndexResult'
 import { ChangeResult } from './variants/ChangeResult'
 import { ClassesResult } from './variants/ClassesResult'
 import { DetectionsResult } from './variants/DetectionsResult'
 import { GenericResult } from './variants/GenericResult'
+import { TextResult } from './variants/TextResult'
 import { NonSuccessResult } from './variants/NonSuccessResult'
 import { formatPercent } from '../../utils/format'
+import { CONFIDENCE_META } from '../../utils/labels'
 import type { TaskResponse } from '../../types/api'
 import './results.css'
 
@@ -33,9 +38,9 @@ function Presentation({ result }: { result: TaskResponse }) {
     case 'detections':
       return <DetectionsResult result={result} />
     case 'text':
-      // The answer above is the whole result for a text capability; there is
-      // nothing further to draw.
-      return null
+      // The answer above is the result; what remains is the picture it was
+      // read from.
+      return <TextResult result={result} />
     case 'mask':
     default:
       return <GenericResult result={result} />
@@ -47,25 +52,42 @@ interface ResultViewProps {
   durationMs?: number | null
 }
 
+/**
+ * One result, laid out the way the answer is built: the question as it was
+ * read, the grounded answer, the map, the findings and how far to trust them,
+ * and then - folded away - the imagery and the full audit trail.
+ */
 export function ResultView({ result, durationMs }: ResultViewProps) {
   const successful = result.status === 'success'
+  const report = result.confidence_report
+  const grounded = successful && (result.findings.length > 0 || report != null)
 
   return (
     <article className="sq-result">
       <ResultHeader result={result} durationMs={durationMs} />
 
+      <UnderstandingStrip understood={result.understood} />
+
       {successful ? (
         <div className="sq-result__answer">
           <p>{result.answer}</p>
-          {result.confidence != null ? (
-            <span className="sq-result__confidence" title="Reported by the capability">
-              Confidence {formatPercent(result.confidence, 0)}
+          {report ? (
+            <span className="sq-result__confidence" title={report.basis}>
+              {CONFIDENCE_META[report.level].label}
+              {report.score != null ? ` · ${formatPercent(report.score, 0)}` : ''}
             </span>
           ) : null}
         </div>
       ) : null}
 
       <Presentation result={result} />
+
+      {grounded ? (
+        <div className="sq-result__grounding">
+          <Findings findings={result.findings} />
+          {report ? <ConfidencePanel report={report} /> : null}
+        </div>
+      ) : null}
 
       {successful && result.artifacts.length > 0 ? (
         <Panel title="Downloads">

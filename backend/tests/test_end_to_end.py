@@ -112,7 +112,8 @@ def test_a_natural_language_request_produces_a_real_verified_ndvi_result(
     assert math.isclose(statistics["median"], percentiles["p50"], abs_tol=1e-9)
 
     # -- 8. an artifact was produced and is downloadable ----------------
-    assert len(body["artifacts"]) == 1
+    # The result raster, plus the picture of the scene the map overlays it on.
+    assert [a["kind"] for a in body["artifacts"]] == ["raster", "image"]
     artifact = body["artifacts"][0]
     assert artifact["kind"] == "raster"
     assert artifact["url"].startswith("/api/tasks/")
@@ -223,7 +224,11 @@ def test_capabilities_describes_only_what_can_actually_run(client):
     body = client.get("/capabilities").json()
 
     executable = set(body["executable"])
-    assert executable == {"ndvi", "ndwi", "ndbi", "change_detection"}
+    assert executable == {
+        "ndvi", "ndwi", "ndbi", "change_detection",
+        "land_cover_classification", "object_detection", "sar_analysis",
+        "optical_sar_fusion",
+    }
 
     # Every tool is listed, but the unimplemented ones say so rather than
     # appearing as available capabilities.
@@ -240,12 +245,16 @@ def test_capabilities_describes_only_what_can_actually_run(client):
 def test_health_reports_the_live_backend(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["registered_tools"] == 8
+    assert body["registered_tools"] == 11
     assert sorted(body["implemented_tools"]) == [
         "change_detection",
+        "land_cover_classification",
         "ndbi",
         "ndvi",
         "ndwi",
+        "object_detection",
+        "optical_sar_fusion",
+        "sar_analysis",
     ]
     assert body["backend"]["raster_backend"] in {"rasterio", "builtin"}
 

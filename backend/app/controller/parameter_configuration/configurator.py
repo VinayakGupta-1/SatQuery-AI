@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from app.controller.input_requirements.input_requirements import InputRequirements
+from app.controller.input_requirements.input_requirements import InputRequirements, change_index_for
 from app.controller.planning.planner import TaskPlan
 from app.controller.task_classification.task_classification import TaskClassificationResult
 from app.controller.task_understanding.task_understanding import TaskUnderstandingResult
@@ -90,6 +90,29 @@ class ParameterConfigurator:
                 resolved.setdefault("swir_band", bands[1])
         elif tool.tool_id == "object_detection" and understanding.objects:
             resolved.setdefault("target_objects", understanding.objects)
+        elif tool.tool_id in {"change_detection", "change_vqa"}:
+            if understanding.imagery_modality != "sar":
+                # The index follows what the question is about, and matches the
+                # bands the validator has already checked the imagery for.
+                resolved.setdefault("index", change_index_for(understanding))
+            if tool.tool_id == "change_vqa":
+                resolved.setdefault("question", understanding.original_query)
+        elif tool.tool_id == "satellite_vqa":
+            resolved.setdefault("question", understanding.original_query)
+
+        # The area the question names becomes a clip every tool applies before
+        # computing -- unless the caller set one explicitly.
+        area = understanding.context.aoi
+        if (
+            area is not None
+            and "aoi_bbox" in tool.parameters
+            and not {"aoi_bbox", "aoi_region"} & set(resolved)
+        ):
+            if area.bbox is not None:
+                resolved["aoi_bbox"] = list(area.bbox)
+                resolved["aoi_crs"] = area.crs
+            elif area.region is not None:
+                resolved["aoi_region"] = area.region
 
     @staticmethod
     def _find_missing_parameters(tool: ToolDefinition, resolved: Dict[str, Any]) -> List[str]:

@@ -23,4 +23,9 @@ frontend/node_modules/.tmp/
 # Generated output
 backend/outputs/
 backend/demo_data/
+backend/evaluation_reports/
+
+# Fine-tuning: downloads, checkpoints and trained models
+work/
+models/
 *.tif.aux.xml

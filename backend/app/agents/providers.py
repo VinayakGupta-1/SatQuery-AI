@@ -26,13 +26,16 @@ keys, so enabling a model never obliges anyone to open a paid account.
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 from typing import Any
 
+from app import USER_AGENT
 from app.agents.guard import allowed_tool_ids
 from app.agents.schemas import AgentTaskPlan
+from app.tools.binding import get_implementation
 from app.config.logging_config import get_logger
 from app.controller.task_classification.task_classification import TaskClassifier
 from app.controller.task_understanding.task_understanding import TaskUnderstanding
@@ -50,6 +53,29 @@ TASK_TO_TOOL = {
     "classification": "land_cover_classification",
     "segmentation": "land_cover_classification",
     "image_analysis": "satellite_vqa",
+    "sar_analysis": "sar_analysis",
+    # Flooding on optical imagery is open water; on radar imagery the
+    # pipeline adapts it to SAR analysis once it has seen the files.
+    "flood_mapping": "ndwi",
+    "optical_sar_fusion": "optical_sar_fusion",
+    "image_captioning": "image_captioning",
+    "change_vqa": "change_vqa",
+}
+
+#: The task a tool answers, for a provider that names a tool but not a task
+#: the controller knows.
+TOOL_TO_TASK = {
+    "ndvi": "ndvi",
+    "ndwi": "ndwi",
+    "ndbi": "ndbi",
+    "change_detection": "change_detection",
+    "object_detection": "object_detection",
+    "land_cover_classification": "classification",
+    "satellite_vqa": "image_analysis",
+    "sar_analysis": "sar_analysis",
+    "optical_sar_fusion": "optical_sar_fusion",
+    "image_captioning": "image_captioning",
+    "change_vqa": "change_vqa",
 }
 
 #: Maps an understood task to the broad operation family.
@@ -62,7 +88,38 @@ TASK_TO_OPERATION = {
     "classification": "scene_classification",
     "segmentation": "segmentation",
     "image_analysis": "scene_understanding",
+    "sar_analysis": "sar_analysis",
+    "flood_mapping": "index_computation",
+    "optical_sar_fusion": "cross_modal_fusion",
+    "image_captioning": "image_captioning",
+    "change_vqa": "change_question_answering",
 }
+
+#: Tasks answered by the vision-language model rather than computed.
+VLM_TASKS = {"image_analysis", "image_captioning", "change_vqa"}
+
+#: A question about change that asks what happened rather than how much or
+#: where: that is what a vision model adds to a measured change map. "Where"
+#: and "how much" stay with the deterministic engine, which answers them
+#: exactly.
+CHANGE_QUESTION_PATTERN = re.compile(
+    r"^\s*(what|how|is|are|was|were|did|does|do|has|have|why|which)\b(?!\s+much\b)",
+    re.IGNORECASE,
+)
+
+#: A sentence phrased as a question, which is what visual question answering
+#: is for when no measurement matched it.
+QUESTION_PATTERN = re.compile(
+    r"\?\s*$|^\s*(what|where|which|how|is|are|was|were|does|do|can|could|why|who|when)\b",
+    re.IGNORECASE,
+)
+
+CLARIFICATION = (
+    "The request does not say which analysis to perform. Ask for a specific "
+    "measurement, for example vegetation health (NDVI), water (NDWI), built-up "
+    "area (NDBI), a land-cover map, how many water bodies there are, flooding "
+    "on radar imagery, or a change comparison between two dates."
+)
 
 
 class ProviderError(Exception):
@@ -97,16 +154,36 @@ class RuleBasedProvider(QueryUnderstandingProvider):
         classification = self._classifier.classify(understanding)
 
         task = understanding.task_type
+        allowed = allowed_tool_ids()
+        vqa_ready = "satellite_vqa" in allowed
+        if task is None and vqa_ready and QUESTION_PATTERN.search(query):
+            # A free-form question no measurement matches is exactly what the
+            # vision model is for -- when an operator has switched it on.
+            task = "image_analysis"
+        if (
+            task == "change_detection"
+            and "change_vqa" in allowed
+            and CHANGE_QUESTION_PATTERN.search(query)
+            and not understanding.context.metrics
+        ):
+            # Measured change, then described: the deterministic change map
+            # runs first and the model answers with its numbers in hand.
+            task = "change_vqa"
+
         clarification = None
-        if task is None or task == "image_analysis":
+        if task is None or (task in VLM_TASKS and not vqa_ready):
             # "Analyze this image" names no analysis. Guessing one would be
             # fabrication, so the request is returned for clarification.
-            clarification = (
-                "The request does not say which analysis to perform. "
-                "Ask for a specific measurement, for example vegetation "
-                "(NDVI), water (NDWI), built-up area (NDBI), or a change "
-                "comparison between two dates."
-            )
+            clarification = CLARIFICATION
+            if get_implementation("satellite_vqa") is not None and (
+                task in VLM_TASKS or QUESTION_PATTERN.search(query)
+            ):
+                # The capability exists but an operator has not switched it
+                # on; saying so beats implying the question was unclear.
+                clarification += (
+                    " Free-form questions about what an image shows are answered "
+                    "by satellite VQA, which is switched off in this deployment."
+                )
 
         return AgentTaskPlan(
             task=task,
@@ -120,25 +197,40 @@ class RuleBasedProvider(QueryUnderstandingProvider):
             clarification=clarification,
             provider=self.name,
             reasoning=(
-                f"Matched the query to task '{task}' by keyword."
+                "No measurement matched the wording, and it is phrased as a "
+                "question, so it goes to visual question answering."
+                if task == "image_analysis" and understanding.task_type is None
+                else f"Matched the query to task '{task}' by keyword."
                 if task
                 else "No known remote-sensing task matched the wording."
             ),
+            locations=list(understanding.context.locations),
+            metrics=list(understanding.context.metrics),
         )
 
 
 PROMPT = """You classify remote-sensing requests. Reply with one JSON object and nothing else.
 
+Allowed "task" values: ndvi (vegetation), ndwi (water), ndbi (built-up land),
+change_detection (comparing two dates), classification (land-cover map),
+object_detection (counting or finding discrete things such as water bodies),
+sar_analysis (radar imagery), flood_mapping (flooding), optical_sar_fusion
+(combining an optical and a radar image), image_captioning (describe the
+image), change_vqa (a question about what changed between two images),
+image_analysis (a free-form question about what the image shows).
 Allowed "tool" values: {tools}
-Use null for "tool" if none applies.
+Use null for "task" or "tool" if none applies.
 
 Schema:
 {{"task": string|null, "operation": string|null, "tool": string|null,
  "confidence": number 0..1, "parameters": object, "objects": [string],
  "requested_output": string|null,
  "temporal_requirement": "single"|"bi_temporal"|null,
+ "locations": [string], "metrics": [string],
  "clarification": string|null, "reasoning": string}}
 
+"locations" lists place names exactly as the request writes them.
+"metrics" uses only: area, percentage, count, amount, mean, median, maximum, minimum.
 Set "clarification" when the request does not say which analysis to run.
 
 Request: {query}"""
@@ -191,7 +283,7 @@ class OllamaProvider(QueryUnderstandingProvider):
         request = urllib.request.Request(
             f"{self.base_url}/api/generate",
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:  # noqa: S310
@@ -235,6 +327,7 @@ __all__ = [
     "RuleBasedProvider",
     "TASK_TO_OPERATION",
     "TASK_TO_TOOL",
+    "TOOL_TO_TASK",
 ]
 
 
@@ -295,6 +388,7 @@ class HostedProvider(QueryUnderstandingProvider):
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self._api_key}",
+                "User-Agent": USER_AGENT,
             },
         )
         try:

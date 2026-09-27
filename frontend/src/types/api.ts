@@ -33,6 +33,15 @@ export type ToolType =
   | 'change_detection'
   | 'classification'
   | 'sar_analysis'
+  | 'fusion'
+  | 'captioning'
+
+/**
+ * `app.registry.registry.Engine` - which side of the hybrid core answers:
+ * exact arithmetic over the pixels, a vision-language model reading a
+ * rendering, or change measured first and then described by the model.
+ */
+export type Engine = 'deterministic' | 'vlm' | 'hybrid'
 
 export interface ToolSummary {
   tool_id: string
@@ -49,8 +58,16 @@ export interface ToolSummary {
   /** Parameter name -> declared type, e.g. `{ red_band: 'str' }`. */
   parameters: Record<string, string>
   enabled: boolean
-  /** False when the tool is registered but has no implementation bound. */
+  engine: Engine
+  /**
+   * False when the tool cannot run in this deployment: no implementation is
+   * bound, or the bound one is switched off.
+   */
   implemented: boolean
+  /** True when an implementation is bound, even if it is switched off. */
+  bound: boolean
+  /** Why `implemented` is false, phrased for an operator; null otherwise. */
+  availability_note: string | null
 }
 
 export interface ImageSummary {
@@ -72,6 +89,24 @@ export interface ImageSummary {
   sensor: string | null
   bands: string[]
   acquisition_date: string | null
+  /** The footprint as [west, south, east, north] in degrees, when transformable. */
+  bounds_lonlat: number[] | null
+}
+
+/** `app.api.schemas.UnderstandingOut` - what the question was read as. */
+export interface Understanding {
+  intent: string | null
+  /** Place names as written. Reported, never geocoded. */
+  locations: string[]
+  /** The area of interest, in words. */
+  area: string | null
+  /** The period the question names, in words. */
+  period: string | null
+  metrics: string[]
+  /** What the sentence says about the sensor. */
+  query_modality: string | null
+  /** What the uploaded imagery actually is. */
+  imagery_modality: string | null
 }
 
 export interface ValidationIssue {
@@ -131,6 +166,63 @@ export interface Evidence {
   confidence: number | null
 }
 
+/** Where a finding lies. Every key is optional: a tool reports what it can. */
+export interface FindingLocation {
+  /** A 3x3 compass sector, e.g. `north-west` or `centre`. */
+  sector?: string
+  /** True when the class spans nearly the whole scene and has no one place. */
+  widespread?: boolean
+  /** [longitude, latitude] in degrees. */
+  centroid_lonlat?: [number, number]
+  /** [column, row] in source pixels. */
+  centroid_pixel?: [number, number]
+  /** A model-proposed region: [x0, y0, x1, y1] as fractions of the picture. */
+  box_fraction?: [number, number, number, number]
+}
+
+/** `app.schemas.results.Finding` - one grounded part of the answer. */
+export interface Finding {
+  title: string
+  detail: string
+  location: FindingLocation | null
+}
+
+/** One measured ingredient of the confidence score. */
+export interface ConfidenceFactor {
+  /** `interpretation`, `coverage`, `agreement` or `model_accuracy`. */
+  name: string
+  score: number
+  detail: string
+}
+
+/**
+ * `app.schemas.results.ConfidenceReport`. The score is the weakest factor,
+ * so it always traces to one measurement. `unrated` means a model wrote the
+ * answer and nobody has benchmarked that model: no number is invented.
+ */
+export interface ConfidenceReport {
+  score: number | null
+  level: 'high' | 'medium' | 'low' | 'unrated'
+  basis: string
+  factors: ConfidenceFactor[]
+}
+
+/** A step a tool took inside one execution. */
+export interface TraceStep {
+  name: string
+  detail: string
+  duration_ms: number
+}
+
+/** One pipeline stage as it actually ran. */
+export interface TraceEvent {
+  stage: string
+  status: string
+  detail: string
+  duration_ms: number
+  steps: TraceStep[]
+}
+
 /**
  * Statistics reported by the index and change tools.
  *
@@ -166,11 +258,86 @@ export interface ClassSummary {
 }
 
 /**
+ * One detected object. Mirrors the record built by `_record` in
+ * `backend/app/tools/detection/tool.py`.
+ */
+export interface Detection {
+  /** 1 is the largest object; ids match the object-id raster. */
+  id: number
+  label: string
+  pixels: number
+  /** Inclusive source-pixel indices: [first column, first row, last column, last row]. */
+  bbox_pixels: [number, number, number, number]
+  /** [column, row] of the centre of mass, in source pixels. */
+  centroid_pixel: [number, number]
+  /** [min_x, min_y, max_x, max_y] in the raster CRS, when georeferenced. */
+  bbox?: [number, number, number, number]
+  /** [x, y] in the raster CRS, when georeferenced. */
+  centroid?: [number, number]
+  area_square_units?: number
+}
+
+/** A region the captioning model outlined, placed back on the raster. */
+export interface CaptionRegion {
+  label: string
+  /** [x0, y0, x1, y1] as fractions of the picture, origin top-left. */
+  box_fraction: [number, number, number, number]
+  /** Inclusive source-pixel indices. */
+  bbox_pixels: [number, number, number, number]
+  /** In the raster CRS, when georeferenced. */
+  bbox?: [number, number, number, number]
+  centre_lonlat?: [number, number]
+}
+
+/**
  * The tool-specific `data` block. The keys present depend on which tool ran;
  * `classes` is normalised onto every response by the API layer.
  */
 export interface ResultData {
   classes?: Record<string, ClassSummary>
+  /** Class rasters: pixel value -> class key, e.g. `{ "1": "water" }`. */
+  class_codes?: Record<string, string>
+  /** Land cover: the rules applied, in order. */
+  rules?: string[]
+  swir_available?: boolean
+  /** Object detection. */
+  detections?: Detection[]
+  detections_total?: number
+  detections_returned?: number
+  counts?: Record<string, number>
+  areas_square_units?: Record<string, number>
+  min_area_pixels?: number
+  connectivity?: number
+  targets?: string[]
+  unresolvable_targets?: string[]
+  classification_rules?: string[]
+  /** SAR water mapping and SAR change detection. */
+  polarisation?: string
+  input_units?: string
+  speckle_filter?: string
+  /** The vision-language model core: VQA, captioning, change-VQA. */
+  question?: string
+  answer?: string
+  model?: string
+  provider?: string
+  rendering?: string
+  rendering_description?: string
+  notice?: string
+  /** VQA over an optical and a SAR image together. */
+  cross_modal?: boolean
+  /** Captioning. */
+  caption?: string
+  regions?: CaptionRegion[]
+  notes?: string[]
+  /** Change-VQA: the deterministic measurement the model was given. */
+  measured?: Record<string, unknown>
+  /** Optical + SAR fusion. */
+  optical_rule?: string
+  radar_rule?: string
+  cloud_mask?: string | null
+  optical_date?: string | null
+  radar_date?: string | null
+  days_apart?: number | null
   /** Index tools and change detection. */
   index?: string
   formula?: string
@@ -212,7 +379,16 @@ export interface TaskResponse {
   data: ResultData
   artifacts: ArtifactLink[]
   evidence: Evidence[]
+  /** The weakest measured confidence factor; null when unrated. */
   confidence: number | null
+  /** Which engine answered. */
+  route: Engine
+  understood: Understanding
+  /** The answer broken into grounded parts: what, how much, where. */
+  findings: Finding[]
+  confidence_report: ConfidenceReport | null
+  /** Every pipeline stage as it ran, timed, with the tool's own steps. */
+  trace: TraceEvent[]
 }
 
 export interface TaskListEntry {
@@ -228,10 +404,16 @@ export interface ValidationResponse {
   status: TaskStatus
   task_category: string
   selected_tool: string | null
+  /** True only when every check, including the registry policy, passed. */
   would_execute: boolean
+  /** When `would_execute` is false: what stands in the way. */
+  reason: string | null
   images: ImageSummary[]
   validation: ValidationReport
   explanation: Explanation
+  route: Engine
+  understood: Understanding
+  trace: TraceEvent[]
 }
 
 export interface BackendInfo {
@@ -250,6 +432,10 @@ export interface CapabilitiesResponse {
   max_images_per_task: number
   agent_provider: string
   agent_llm_enabled: boolean
+  /** `hosted` or `ollama` when the VLM core is on; null when it is off. */
+  vlm_provider: string | null
+  /** True when the vision model runs on this machine. */
+  vlm_local: boolean
   backend: BackendInfo
 }
 

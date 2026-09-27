@@ -103,3 +103,14 @@
   color: var(--sq-text-3);
   letter-spacing: var(--sq-tracking-wide);
 }
+
+/* The name takes the room; the engine and availability tags wrap under it
+   on narrow cards instead of squeezing it. */
+.sq-cap__head {
+  flex-wrap: wrap;
+}
+
+.sq-cap__head .sq-cap__name {
+  flex: 1;
+  min-width: 10ch;
+}

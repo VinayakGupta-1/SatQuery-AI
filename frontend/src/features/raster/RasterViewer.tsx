@@ -7,12 +7,24 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import { buildLookup, rampFor, rampGradient, type Ramp } from './colormaps'
+import { buildLookup, buildPalette, rampFor, rampGradient, type Ramp } from './colormaps'
 import { useGeoTiff } from './useGeoTiff'
 import { IconButton, Skeleton, StateBlock } from '../../components/ui'
 import { AlertIcon, ResetIcon, ZoomInIcon, ZoomOutIcon } from '../../components/icons'
 import { formatIndex } from '../../utils/format'
+import { classColour, classLabel } from '../../utils/labels'
 import './raster.css'
+
+/** A rectangle to outline over the raster, in source-pixel coordinates. */
+export interface RasterBox {
+  id: number | string
+  /** Left and top edges, and right and bottom edges (exclusive). */
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  colour: string
+}
 
 interface RasterViewerProps {
   /** Absolute URL of the artifact to draw. */
@@ -25,6 +37,14 @@ interface RasterViewerProps {
   caption?: string
   /** Units for the value readout, when the raster is not an index. */
   valueLabel?: string
+  /**
+   * Pixel value -> class key, for a class raster. Switches the viewer from a
+   * continuous ramp to one colour per class, so a land-cover map is drawn in
+   * the same colours as its legend rather than as shades of grey.
+   */
+  classCodes?: Record<string, string>
+  /** Outlines drawn over the raster, e.g. detected objects. */
+  boxes?: RasterBox[]
 }
 
 const MIN_ZOOM = 1
@@ -47,6 +67,8 @@ export function RasterViewer({
   indexName,
   caption,
   valueLabel,
+  classCodes,
+  boxes,
 }: RasterViewerProps) {
   const { raster, loading, error } = useGeoTiff(url)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -60,6 +82,10 @@ export function RasterViewer({
   const ramp: Ramp = useMemo(
     () => rampFor(indexName, artifactId),
     [indexName, artifactId],
+  )
+  const palette = useMemo(
+    () => (classCodes ? buildPalette(classCodes, classColour) : null),
+    [classCodes],
   )
 
   /**
@@ -109,6 +135,21 @@ export function RasterViewer({
         continue
       }
 
+      if (palette) {
+        // A class raster: one colour per code, and a code with no class (the
+        // background of an object map) left transparent like nodata.
+        const colour = palette.get(Math.round(value))
+        if (!colour) {
+          image.data[target + 3] = 0
+          continue
+        }
+        image.data[target] = colour[0]
+        image.data[target + 1] = colour[1]
+        image.data[target + 2] = colour[2]
+        image.data[target + 3] = 255
+        continue
+      }
+
       const normalised = Math.min(1, Math.max(0, (value - domain.low) / span))
       const slot = Math.round(normalised * 255) * 3
       image.data[target] = lookup[slot]
@@ -118,7 +159,7 @@ export function RasterViewer({
     }
 
     context.putImageData(image, 0, 0)
-  }, [raster, ramp, domain])
+  }, [raster, ramp, domain, palette])
 
   const reset = useCallback(() => {
     setZoom(1)
@@ -277,11 +318,40 @@ export function RasterViewer({
           className="sq-raster__canvas"
           style={{
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-            imageRendering: zoom > 2 ? 'pixelated' : 'auto',
+            // Smoothing a class map invents colours no class has, so a class
+            // raster is always drawn nearest-neighbour.
+            imageRendering: palette || zoom > 2 ? 'pixelated' : 'auto',
           }}
           aria-label={caption ?? 'Analysis result raster'}
           role="img"
         />
+
+        {boxes && boxes.length > 0 ? (
+          // Drawn in source-pixel units and moved with the same transform as
+          // the canvas, so outlines stay on their objects at any zoom while
+          // their strokes stay one screen pixel wide.
+          <svg
+            className="sq-raster__overlay"
+            viewBox={`0 0 ${raster.sourceWidth} ${raster.sourceHeight}`}
+            preserveAspectRatio="none"
+            style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}
+            aria-hidden="true"
+          >
+            {boxes.map((box) => (
+              <rect
+                key={box.id}
+                x={box.x0}
+                y={box.y0}
+                width={box.x1 - box.x0}
+                height={box.y1 - box.y0}
+                fill="none"
+                stroke={box.colour}
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+        ) : null}
 
         <div className="sq-raster__controls">
           <IconButton
@@ -316,7 +386,11 @@ export function RasterViewer({
         {probe ? (
           <div className="sq-raster__probe sq-mono">
             <span>{valueLabel ?? indexName ?? 'value'}</span>
-            <strong>{formatIndex(probe.value)}</strong>
+            <strong>
+              {classCodes
+                ? classLabel(classCodes[String(Math.round(probe.value))] ?? 'unclassified')
+                : formatIndex(probe.value)}
+            </strong>
             <span className="sq-raster__probe-pixel">
               {probe.x}, {probe.y}
             </span>
@@ -324,18 +398,35 @@ export function RasterViewer({
         ) : null}
       </div>
 
-      <div className="sq-raster__legend">
-        <div
-          className="sq-raster__ramp"
-          style={{ background: rampGradient(ramp) }}
-          aria-hidden="true"
-        />
-        <div className="sq-raster__scale sq-mono">
-          <span>{formatIndex(domain.low, 2)}</span>
-          <span>{formatIndex(ramp.centre, 2)}</span>
-          <span>{formatIndex(domain.high, 2)}</span>
+      {classCodes ? (
+        <ul className="sq-raster__classes" aria-label="Legend">
+          {Object.entries(classCodes)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([code, key]) => (
+              <li key={code} className="sq-raster__class">
+                <span
+                  className="sq-raster__swatch"
+                  style={{ background: classColour(key) }}
+                  aria-hidden="true"
+                />
+                {classLabel(key)}
+              </li>
+            ))}
+        </ul>
+      ) : (
+        <div className="sq-raster__legend">
+          <div
+            className="sq-raster__ramp"
+            style={{ background: rampGradient(ramp) }}
+            aria-hidden="true"
+          />
+          <div className="sq-raster__scale sq-mono">
+            <span>{formatIndex(domain.low, 2)}</span>
+            <span>{formatIndex(ramp.centre, 2)}</span>
+            <span>{formatIndex(domain.high, 2)}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="sq-raster__caption">
         {caption}

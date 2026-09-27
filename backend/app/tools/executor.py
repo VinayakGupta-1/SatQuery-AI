@@ -18,6 +18,10 @@ class ToolNotImplementedError(ToolExecutionError):
     """A registered tool has no implementation bound to it yet."""
 
 
+class ToolUnavailableError(ToolNotImplementedError):
+    """A tool is bound but switched off in this deployment."""
+
+
 class ToolExecutor:
     """Runs the implementation bound to a registered tool."""
 
@@ -34,6 +38,11 @@ class ToolExecutor:
             raise ToolNotImplementedError(
                 f"Tool '{tool_id}' is registered but has no execution implementation "
                 f"yet. Implemented tools: {implemented_tool_ids()}."
+            )
+        if not implementation.available():
+            raise ToolUnavailableError(
+                f"Tool '{tool_id}' is switched off in this deployment. "
+                f"{implementation.unavailable_reason() or ''}".strip()
             )
 
         request = ToolRequest(

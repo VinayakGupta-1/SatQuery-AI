@@ -17,6 +17,8 @@ import time
 
 from app.agents.guard import guard
 from app.agents.providers import (
+    TASK_TO_TOOL,
+    TOOL_TO_TASK,
     HostedProvider,
     OllamaProvider,
     ProviderError,
@@ -145,16 +147,36 @@ def to_task_understanding(plan: AgentTaskPlan, query: str):
     through this function reproduces exactly what the classifier would have
     produced on its own, so enabling the agent layer changes no behaviour until
     a different provider is configured.
+
+    A model may name a sensible tool under a task label the controller has
+    never heard of ("vegetation_health" for NDVI). The tool has already passed
+    the guard, so the task is recovered from it rather than the request being
+    dropped as unknown.
+
+    Location, time and modality are read from the sentence deterministically,
+    whichever provider ran: those values change what is computed, so they
+    come from the words the user typed and never from a model's rendering of
+    them. A model's place names and metrics may only add to that reading.
     """
+    from app.controller.task_understanding.context import extract_context
     from app.controller.task_understanding.task_understanding import (
         TaskUnderstandingResult,
     )
 
+    task = plan.task
+    if task not in TASK_TO_TOOL and plan.tool in TOOL_TO_TASK:
+        task = TOOL_TO_TASK[plan.tool]
+
+    context = extract_context(query)
+    context.locations = list(dict.fromkeys([*context.locations, *plan.locations]))[:5]
+    context.metrics = list(dict.fromkeys([*context.metrics, *plan.metrics]))
+
     return TaskUnderstandingResult(
         original_query=query,
-        task_type=plan.task,
+        task_type=task,
         objects=list(plan.objects),
         requested_output=plan.requested_output,
         temporal_requirement=plan.temporal_requirement,
         confidence=plan.confidence,
+        context=context,
     )
