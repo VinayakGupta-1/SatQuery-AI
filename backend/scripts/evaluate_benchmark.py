@@ -11,14 +11,17 @@ set is https://zenodo.org/records/6344334, about 100 MB)::
         --questions RSVQA_LR/LR_split_test_questions.json \\
         --answers   RSVQA_LR/LR_split_test_answers.json \\
         --images    RSVQA_LR/Images_LR \\
-        --types presence,comp,rural_urban --sample 500 --delay 2.2
+        --types presence,comp,rural_urban --sample 500 --limit 90 --delay 18
 
 ``--sample`` scores a seeded random sample: benchmark files list many
 questions per image in a row, so the first 500 can be only five scenes.
 ``--types`` leaves out RSVQA-LR's ``count`` questions, whose answers are raw
 object counts ("403 roads") no model can read from 10 m pixels; VLM
-evaluations on RSVQA-LR commonly report the other three types. ``--delay``
-spaces the calls to stay inside a free tier's requests-per-minute limit.
+evaluations on RSVQA-LR commonly report the other three types. ``--limit``
+scores the first N of the sample. ``--delay`` spaces the calls to the
+endpoint's rate limit: on Groq's free tier an image costs about 2,080 input
+tokens against 7,000 a minute (hence 18 seconds) and 200,000 a day (hence
+about 90 questions per run).
 
 VRSBench VQA, or any benchmark exported as JSON/JSONL records::
 
@@ -49,7 +52,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config.settings import get_settings  # noqa: E402
 from app.evaluation.datasets import DatasetError, load_records, load_rsvqa  # noqa: E402
-from app.evaluation.runner import evaluate, model_answerer, select  # noqa: E402
+from app.evaluation.runner import BenchmarkInterrupted, evaluate, model_answerer, select  # noqa: E402
 from app.tools.vlm.client import VisionLanguageModel  # noqa: E402
 from app.tools.vlm.core import vlm_unavailable_reason  # noqa: E402
 
@@ -114,6 +117,11 @@ def main(argv: list[str] | None = None) -> int:
 
     model = VisionLanguageModel(get_settings())
     total = min(len(samples), args.limit or len(samples))
+    if total < len(samples):
+        # --sample N --limit M scores the first M of that sample: a subset of
+        # exactly the questions another run over the full sample measured.
+        selection["method"] = f"first {total} of a {selection['method']}"
+        selection["images"] = len({image for sample in samples[:total] for image in sample.images})
     print(
         f"Evaluating {model.identity} on {total} {name} question(s) "
         f"({selection['method']}, {selection['images']} image(s))..."
@@ -123,10 +131,19 @@ def main(argv: list[str] | None = None) -> int:
         if done == count or done % 25 == 0:
             print(f"  {done}/{count}", flush=True)
 
-    report = evaluate(
-        samples, model_answerer(model), name, model.identity, args.limit, progress,
-        min_interval=args.delay, selection=selection,
-    )
+    try:
+        report = evaluate(
+            samples, model_answerer(model), name, model.identity, args.limit, progress,
+            min_interval=args.delay, selection=selection,
+        )
+    except BenchmarkInterrupted as stopped:
+        print(
+            f"\n{stopped}\nNo report was written: scoring the unanswered questions as "
+            "wrong would measure the quota, not the model. Rerun with a smaller "
+            "--limit, or once the quota has reset.",
+            file=sys.stderr,
+        )
+        return 3
 
     os.makedirs(REPORTS, exist_ok=True)
     out = args.out or os.path.join(REPORTS, f"{name}_{datetime.now():%Y%m%d_%H%M%S}.json")

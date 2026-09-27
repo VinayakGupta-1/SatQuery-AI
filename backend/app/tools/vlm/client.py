@@ -35,26 +35,48 @@ from app.tools.base import ToolExecutionError
 #: Rate-limited or briefly unavailable: worth waiting for, a few times.
 RETRYABLE_STATUS = {429, 503}
 MAX_ATTEMPTS = 4
-#: Never wait longer than this for one retry, whatever the server asks.
+#: The longest single wait worth making. A server that asks for longer -- a
+#: per-day quota, typically -- is reported at once instead of waited on.
 MAX_WAIT_SECONDS = 30.0
 
 
-def _retry_after(error: urllib.error.HTTPError, attempt: int) -> float:
-    """Seconds to wait before retrying: the server's ``Retry-After``, else backoff."""
+def describe_wait(seconds: float) -> str:
+    """``400`` -> ``7 minutes``."""
+    if seconds < 90:
+        return f"{round(seconds)} seconds"
+    if seconds < 90 * 60:
+        return f"{round(seconds / 60)} minutes"
+    return f"{seconds / 3600:.1f} hours"
+
+
+class RateLimited(ToolExecutionError):
+    """The endpoint's rate limit or usage quota is reached."""
+
+    def __init__(self, retry_after: float | None) -> None:
+        self.retry_after = retry_after
+        when = f"Try again in about {describe_wait(retry_after)}." if retry_after else "Try again later."
+        super().__init__(
+            f"The vision model's rate limit or usage quota has been reached (HTTP 429). {when}"
+        )
+
+
+def _requested_wait(error: urllib.error.HTTPError) -> float | None:
+    """The server's ``Retry-After`` in seconds, if it sent a usable one."""
     header = error.headers.get("Retry-After") if error.headers else None
     try:
-        wait = float(header) if header is not None else 2.0 ** attempt
+        return max(float(header), 0.0) if header is not None else None
     except ValueError:
-        wait = 2.0 ** attempt
-    return min(max(wait, 0.0), MAX_WAIT_SECONDS)
+        return None
 
 
 def post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int) -> dict[str, Any]:
     """POST ``payload`` as JSON and return the decoded JSON response.
 
-    A rate limit (429) or a brief outage (503) is retried a bounded number of
-    times, so a free-tier limit slows a burst of requests down instead of
-    failing some of them.
+    A rate limit (429) or a brief outage (503) that lifts within
+    ``MAX_WAIT_SECONDS`` is waited out a bounded number of times, so a
+    per-minute limit slows a burst of requests down instead of failing some
+    of them. A longer wait -- a daily quota -- raises :class:`RateLimited`
+    at once, saying how long.
     """
     headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
     if api_key:
@@ -66,15 +88,21 @@ def post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int) -> 
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
-            if error.code in RETRYABLE_STATUS and attempt < MAX_ATTEMPTS:
-                time.sleep(_retry_after(error, attempt))
-                continue
+            if error.code in RETRYABLE_STATUS:
+                requested = _requested_wait(error)
+                wait = requested if requested is not None else 2.0 ** attempt
+                if attempt < MAX_ATTEMPTS and wait <= MAX_WAIT_SECONDS:
+                    time.sleep(wait)
+                    continue
+                if error.code == 429:
+                    raise RateLimited(requested) from None
             # The body can echo the request, so it is deliberately not relayed.
-            hint = (
-                "Check SATQUERY_AGENT_API_KEY is a current key for this endpoint."
-                if error.code in {401, 403}
-                else "Check SATQUERY_VQA_MODEL names a vision-capable model on this endpoint."
-            )
+            if error.code in {401, 403}:
+                hint = "Check SATQUERY_AGENT_API_KEY is a current key for this endpoint."
+            elif error.code >= 500:
+                hint = "The endpoint is temporarily unavailable; try again later."
+            else:
+                hint = "Check SATQUERY_VQA_MODEL names a vision-capable model on this endpoint."
             raise ToolExecutionError(
                 f"The vision model rejected the request (HTTP {error.code}). {hint}"
             ) from None
@@ -195,4 +223,4 @@ def _text(content: Any) -> str:
     return content.strip()
 
 
-__all__ = ["VisionLanguageModel", "image_mime", "post_json"]
+__all__ = ["RateLimited", "VisionLanguageModel", "describe_wait", "image_mime", "post_json"]

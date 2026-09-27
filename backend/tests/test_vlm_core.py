@@ -26,7 +26,7 @@ from app.tools.vlm.captioning import ImageCaptioningTool, ground_regions, parse_
 from app.tools.vlm.change_vqa import ChangeVQATool
 from tests.conftest import make_band
 
-MODEL_IDENTITY = "hosted:meta-llama/llama-4-scout-17b-16e-instruct"
+MODEL_IDENTITY = "hosted:qwen/qwen3.8-27b"
 
 
 @pytest.fixture
@@ -361,18 +361,49 @@ def test_a_rate_limit_is_waited_out_not_failed(monkeypatch):
     assert waits == [1.5, 4.0]  # the server's Retry-After, then backoff
 
 
-def test_a_rate_limit_that_never_lifts_fails_after_bounded_waits(monkeypatch):
+def test_a_short_limit_that_never_lifts_fails_after_bounded_waits(monkeypatch):
     waits = []
 
     def urlopen(request, timeout):
-        raise _http_error(429, "600")
+        raise _http_error(429, "20")
 
     monkeypatch.setattr(client.urllib.request, "urlopen", urlopen)
     monkeypatch.setattr(client.time, "sleep", waits.append)
 
-    with pytest.raises(ToolExecutionError, match="HTTP 429"):
+    with pytest.raises(client.RateLimited, match="HTTP 429.*about 20 seconds"):
         client.post_json("https://example.invalid", {}, "k", 5)
-    assert waits == [30.0, 30.0, 30.0]  # capped, and only MAX_ATTEMPTS - 1 of them
+    assert waits == [20.0, 20.0, 20.0]  # only MAX_ATTEMPTS - 1 of them
+
+
+def test_a_daily_quota_is_reported_at_once_not_waited_on(monkeypatch):
+    # Groq's free tier answers an exhausted daily token budget with a 429
+    # asking for minutes; waiting would only delay the same refusal.
+    waits = []
+
+    def urlopen(request, timeout):
+        raise _http_error(429, "400")
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(client.time, "sleep", waits.append)
+
+    with pytest.raises(client.RateLimited, match="quota has been reached.*about 7 minutes") as error:
+        client.post_json("https://example.invalid", {}, "k", 5)
+    assert error.value.retry_after == 400.0
+    assert waits == []
+
+
+def test_an_outage_is_not_blamed_on_the_model_name(monkeypatch):
+    def urlopen(request, timeout):
+        raise _http_error(503, "3600")
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", urlopen)
+    with pytest.raises(ToolExecutionError, match="temporarily unavailable"):
+        client.post_json("https://example.invalid", {}, "k", 5)
+
+
+@pytest.mark.parametrize("seconds, words", [(45, "45 seconds"), (400, "7 minutes"), (7200, "2.0 hours")])
+def test_waits_are_described_in_words(seconds, words):
+    assert client.describe_wait(seconds) == words
 
 
 def test_a_rejected_key_is_named_and_not_retried(monkeypatch):

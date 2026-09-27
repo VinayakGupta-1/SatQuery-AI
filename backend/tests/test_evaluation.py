@@ -301,3 +301,72 @@ def test_calls_are_spaced_to_respect_a_rate_limit(monkeypatch):
     report = evaluate(samples(), answer, "tiny", "fake:model", min_interval=2.0, selection={"method": "x"})
     assert waits == [1.5, 1.5]  # the first call goes at once
     assert report["selection"] == {"method": "x"}
+
+
+def test_a_limited_run_says_it_scored_part_of_the_sample(monkeypatch, tmp_path):
+    monkeypatch.setenv("SATQUERY_VQA_ENABLED", "true")
+    monkeypatch.setenv("SATQUERY_AGENT_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("SATQUERY_AGENT_PROVIDER", "rules")
+    reset_settings()
+    try:
+        monkeypatch.setattr(
+            client, "post_json",
+            lambda url, payload, key, timeout: {"choices": [{"message": {"content": "yes"}}]},
+        )
+        (tmp_path / "t.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        data = write_json(tmp_path / "bench.json", [
+            {"id": i, "image": "t.png", "question": "?", "answer": "yes", "type": "presence"} for i in range(6)
+        ])
+        script = load_script()
+        monkeypatch.setattr(script, "REPORTS", str(tmp_path / "reports"))
+        out = tmp_path / "report.json"
+        assert script.main([
+            "records", "--data", data, "--image-field", "image", "--image-root", str(tmp_path),
+            "--sample", "4", "--limit", "2", "--out", str(out), "--no-latest",
+        ]) == 0
+        report = json.loads(out.read_text(encoding="utf-8"))
+        assert report["samples"] == 2
+        assert report["selection"]["method"] == "first 2 of a random sample of 4 (seed 0)"
+    finally:
+        reset_settings()
+
+
+def test_an_exhausted_quota_stops_the_run_instead_of_scoring_it():
+    from app.evaluation.runner import BenchmarkInterrupted
+    from app.tools.vlm.client import RateLimited
+
+    def answer(sample):
+        if sample.id == "2":
+            raise RateLimited(400.0)
+        return "yes"
+
+    with pytest.raises(BenchmarkInterrupted) as stopped:
+        evaluate(samples(), answer, "tiny", "fake:model")
+    assert (stopped.value.answered, stopped.value.total) == (1, 3)
+    assert "quota" in str(stopped.value)
+
+
+def test_the_script_writes_no_report_when_the_quota_runs_out(monkeypatch, tmp_path, capsys):
+    from app.tools.vlm.client import RateLimited
+
+    monkeypatch.setenv("SATQUERY_VQA_ENABLED", "true")
+    monkeypatch.setenv("SATQUERY_AGENT_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("SATQUERY_AGENT_PROVIDER", "rules")
+    reset_settings()
+    try:
+        def post(url, payload, key, timeout):
+            raise RateLimited(400.0)
+
+        monkeypatch.setattr(client, "post_json", post)
+        (tmp_path / "t.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        data = write_json(tmp_path / "bench.json", [
+            {"id": i, "image": "t.png", "question": "?", "answer": "yes", "type": "presence"} for i in range(3)
+        ])
+        script = load_script()
+        monkeypatch.setattr(script, "REPORTS", str(tmp_path / "reports"))
+        assert script.main(["records", "--data", data, "--image-field", "image", "--image-root", str(tmp_path)]) == 3
+        assert not (tmp_path / "reports").exists()
+        err = capsys.readouterr().err
+        assert "Stopped after 0 of 3 questions" in err and "No report was written" in err
+    finally:
+        reset_settings()

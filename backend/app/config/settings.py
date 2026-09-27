@@ -150,9 +150,10 @@ class Settings:
             "AGENT_HOSTED_BASE_URL", "https://api.groq.com/openai/v1"
         ).rstrip("/")
     )
-    #: Model id for the hosted provider.
+    #: Model id for the hosted provider. Groq retires models; this is one it
+    #: served in September 2026 that returns reliable JSON plans.
     agent_hosted_model: str = field(
-        default_factory=lambda: _env("AGENT_HOSTED_MODEL", "llama-3.3-70b-versatile")
+        default_factory=lambda: _env("AGENT_HOSTED_MODEL", "openai/gpt-oss-120b")
     )
     #: How long to wait for the local model before falling back to rules.
     agent_timeout_seconds: int = field(
@@ -245,7 +246,9 @@ class Settings:
     def resolved_vqa_model(self) -> str:
         if self.vqa_model:
             return self.vqa_model
-        return "llama3.2-vision" if self.vqa_is_local else "meta-llama/llama-4-scout-17b-16e-instruct"
+        # The hosted default is the vision model Groq served in September
+        # 2026; when Groq retires it, set SATQUERY_VQA_MODEL.
+        return "llama3.2-vision" if self.vqa_is_local else "qwen/qwen3.8-27b"
 
     @property
     def vqa_uses_agent_endpoint(self) -> bool:

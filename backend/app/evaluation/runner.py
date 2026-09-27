@@ -27,7 +27,7 @@ from app.tools.base import ToolExecutionError
 from app.tools.raster.io import open_raster
 from app.tools.raster.model import RasterError
 from app.tools.raster.render import render_preview
-from app.tools.vlm.client import VisionLanguageModel
+from app.tools.vlm.client import RateLimited, VisionLanguageModel
 
 ENCODED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -67,6 +67,14 @@ def model_answerer(model: VisionLanguageModel | None = None) -> AnswerFunction:
         )
 
     return answer
+
+
+class BenchmarkInterrupted(Exception):
+    """The endpoint stopped answering for longer than a run can wait."""
+
+    def __init__(self, answered: int, total: int, reason: str) -> None:
+        self.answered, self.total, self.reason = answered, total, reason
+        super().__init__(f"Stopped after {answered} of {total} questions: {reason}")
 
 
 def select(
@@ -125,6 +133,11 @@ def evaluate(
         last_call = time.perf_counter()
         try:
             given = answer(sample)
+        except RateLimited as error:
+            # A quota that outlasts the run is not the model being wrong:
+            # scoring every remaining question as a failure would report
+            # an accuracy that measures the quota. Stop instead.
+            raise BenchmarkInterrupted(index - 1, len(chosen), str(error)) from None
         except ToolExecutionError as error:
             # A failed call is scored wrong, not skipped: skipping would let
             # an unreliable endpoint inflate its own accuracy.
@@ -154,4 +167,4 @@ def evaluate(
     return report
 
 
-__all__ = ["evaluate", "model_answerer", "picture", "select"]
+__all__ = ["BenchmarkInterrupted", "evaluate", "model_answerer", "picture", "select"]

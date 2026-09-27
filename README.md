@@ -112,13 +112,28 @@ it:
 ```bash
 cd backend
 # RSVQA-LR, about 100 MB: https://zenodo.org/records/6344334
-python scripts/evaluate_benchmark.py rsvqa     --questions RSVQA_LR/LR_split_test_questions.json     --answers   RSVQA_LR/LR_split_test_answers.json     --images    RSVQA_LR/Images_LR     --types presence,comp,rural_urban --sample 500 --delay 2.2
+python scripts/evaluate_benchmark.py rsvqa     --questions RSVQA_LR/LR_split_test_questions.json     --answers   RSVQA_LR/LR_split_test_answers.json     --images    RSVQA_LR/Images_LR     --types presence,comp,rural_urban --sample 500 --limit 90 --delay 18
 ```
 
 `--sample` scores a seeded random sample spread over the benchmark (its file
-lists questions image by image, so "the first 500" is five scenes). `--types`
-leaves out RSVQA-LR's count questions, whose answers are raw object counts no
-model can read from 10 m pixels. `--delay` keeps a free tier's rate limit.
+lists questions image by image, so "the first 500" is five scenes); `--limit`
+scores the first N of that sample, a subset of exactly the questions the
+fine-tuning notebook measures. `--types` leaves out RSVQA-LR's count
+questions, whose answers are raw object counts no model can read from 10 m
+pixels.
+
+`--delay` paces the calls to the endpoint's limit. On Groq's free tier
+(measured September 2026 with `qwen/qwen3.8-27b`) every image costs about
+2,080 input tokens whatever its size, against 7,000 tokens a minute and
+200,000 a day: a question every 18 seconds, and about 95 image questions a
+day, shared with the app. If the daily budget runs out mid-run the script
+stops and writes nothing, rather than scoring the unanswered questions as
+wrong.
+
+The same budget applies inside SatQuery: about 95 one-image vision questions
+a day, or 48 two-image ones (change-VQA, optical + SAR). Deterministic
+analyses use no tokens. A short rate limit is waited out; an exhausted daily
+budget is reported at once with how long until it frees up.
 
 VRSBench and CDVQA exports are read with the `records` subcommand (see the
 script's docstring). The report lands in `backend/evaluation_reports/`, and

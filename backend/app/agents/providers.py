@@ -213,11 +213,15 @@ PROMPT = """You classify remote-sensing requests. Reply with one JSON object and
 
 Allowed "task" values: ndvi (vegetation), ndwi (water), ndbi (built-up land),
 change_detection (comparing two dates), classification (land-cover map),
-object_detection (counting or finding discrete things such as water bodies),
-sar_analysis (radar imagery), flood_mapping (flooding), optical_sar_fusion
-(combining an optical and a radar image), image_captioning (describe the
-image), change_vqa (a question about what changed between two images),
-image_analysis (a free-form question about what the image shows).
+object_detection (counting or listing discrete objects: "how many lakes are
+there?", "list every water body"), sar_analysis (radar imagery),
+flood_mapping (flooding), optical_sar_fusion (combining an optical and a
+radar image), image_captioning (describe the image), change_vqa (a question
+about what changed between two images), image_analysis (a yes/no or open
+question about what the image shows: "is there a river?", "what kind of area
+is this?").
+Choose image_analysis when the request asks whether something is visible, and
+object_detection only when it asks to count or list objects.
 Allowed "tool" values: {tools}
 Use null for "task" or "tool" if none applies.
 
