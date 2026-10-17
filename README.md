@@ -175,9 +175,13 @@ pixels.
 (measured September 2026 with `qwen/qwen3.8-27b`) every image costs about
 2,080 input tokens whatever its size, against 7,000 tokens a minute and
 200,000 a day: a question every 18 seconds, and about 95 image questions a
-day, shared with the app. If the daily budget runs out mid-run the script
-stops and writes nothing, rather than scoring the unanswered questions as
-wrong.
+day, shared with the app. In practice the limit can bite sooner: on
+17 October 2026 a run stopped after 60 questions. If the budget runs out
+mid-run the script stops and writes no report, rather than scoring the
+unanswered questions as wrong. Every answer is saved as it arrives
+(`evaluation_reports/<name>_answers.jsonl`), so running the same command again
+once the quota has reset asks only the remaining questions; `--fresh` starts
+over.
 
 The same budget applies inside SatQuery: about 95 one-image vision questions
 a day, or 48 two-image ones (change-VQA, optical + SAR). Deterministic
@@ -227,7 +231,7 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 694 tests
+python -m pytest                                   # 697 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```

@@ -49,8 +49,9 @@ limits. The user has been told this and was advised to relabel the box
 
 - **Code: complete.** Commits `1081837` (the whole architecture) and `18e330e`
   (current Groq models, quota handling).
-- **Tests:** 682 backend tests pass on both raster backends (641 before
-  2026-10-17, plus 41 in `tests/test_acquisition.py`). The frontend lints and
+- **Tests:** 697 backend tests pass on both raster backends (641 before
+  2026-10-17; 44 in `tests/test_acquisition.py`, 12 in
+  `tests/test_limits_and_retention.py`), plus 15 Vitest tests in the frontend. The frontend lints and
   builds clean.
 - **UI:** verified in headless Chrome at desktop and phone width (Playwright
   driving the installed Chrome, from a scratch virtual environment).
@@ -137,7 +138,7 @@ without files fetches it.
 
 ```bash
 # Backend (from backend/)
-.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 682 tests
+.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 697 tests
 SATQUERY_RASTER_BACKEND=builtin .venv/Scripts/python.exe -m pytest -q -p no:warnings  # the same, without GDAL
 .venv/Scripts/uvicorn app.main:app --reload                                           # http://127.0.0.1:8000
 
@@ -171,8 +172,14 @@ never call Groq.
 
 ## 6. Open items: what to do next
 
-1. **Run the RSVQA-LR benchmark for `qwen/qwen3.8-27b`.** It has not been
-   done: on 2026-09-27 the daily quota ran out mid-run. Nothing was written.
+1. **Run the RSVQA-LR benchmark for `qwen/qwen3.8-27b`.** Still not done.
+   On 2026-09-27 the daily quota ran out mid-run, and on 2026-10-17 it ran out
+   again after 60 of 90 questions. Neither run kept its answers. Since
+   2026-10-17 the script saves each answer to
+   `evaluation_reports/rsvqa_lr_answers.jsonl` as it arrives, so the next run
+   resumes. Run the same command once a day until it completes; `--fresh`
+   starts over. Avoid days when the user needs the vision features: they share
+   the quota.
    - The RSVQA-LR data (CC-BY-4.0, about 100 MB) was in a session scratchpad,
      which is now gone. Download again from https://zenodo.org/records/6344334:
      `LR_split_test_questions.json`, `LR_split_test_answers.json` and

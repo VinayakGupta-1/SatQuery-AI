@@ -15,6 +15,7 @@ unrated.
 
 from __future__ import annotations
 
+import json
 import os
 import random
 import time
@@ -104,6 +105,26 @@ def select(
     }
 
 
+def load_checkpoint(path: str | None, model: str) -> dict[str, str]:
+    """Answers ``model`` already gave, by question id, from a checkpoint file.
+
+    Lines written for another model are ignored, so one file can never mix
+    two models' answers into one score.
+    """
+    if not path or not os.path.exists(path):
+        return {}
+    answers: dict[str, str] = {}
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue  # a line cut off when the process was killed
+            if isinstance(entry, dict) and entry.get("model") == model and "id" in entry:
+                answers[str(entry["id"])] = str(entry.get("answered", ""))
+    return answers
+
+
 def evaluate(
     samples: list[Sample],
     answer: AnswerFunction,
@@ -113,36 +134,52 @@ def evaluate(
     progress: Callable[[int, int], None] | None = None,
     min_interval: float = 0.0,
     selection: dict[str, object] | None = None,
+    checkpoint: str | None = None,
 ) -> dict[str, object]:
     """Answer every sample and score the answers into a report.
 
     ``min_interval`` spaces the calls at least that many seconds apart, to
     stay inside a hosted endpoint's requests-per-minute limit.
+
+    ``checkpoint`` names a file every answer is appended to as it arrives.
+    A free-tier quota can run out mid-run; with a checkpoint, running the same
+    command again reuses the saved answers and asks only the remaining
+    questions, instead of spending the quota on the same questions again.
+    Failed calls are not saved, so they are retried.
     """
     chosen = samples[:limit] if limit else samples
+    saved = load_checkpoint(checkpoint, model)
     outcomes: list[tuple[str, bool, float]] = []
     mistakes: list[dict[str, str]] = []
     failures: list[dict[str, str]] = []
+    reused = 0
     started = time.perf_counter()
     last_call = float("-inf")
 
     for index, sample in enumerate(chosen, start=1):
-        wait = last_call + min_interval - time.perf_counter()
-        if wait > 0:
-            time.sleep(wait)
-        last_call = time.perf_counter()
-        try:
-            given = answer(sample)
-        except RateLimited as error:
-            # A quota that outlasts the run is not the model being wrong:
-            # scoring every remaining question as a failure would report
-            # an accuracy that measures the quota. Stop instead.
-            raise BenchmarkInterrupted(index - 1, len(chosen), str(error)) from None
-        except ToolExecutionError as error:
-            # A failed call is scored wrong, not skipped: skipping would let
-            # an unreliable endpoint inflate its own accuracy.
-            given = ""
-            failures.append({"id": sample.id, "error": str(error)})
+        if sample.id in saved:
+            given = saved[sample.id]
+            reused += 1
+        else:
+            wait = last_call + min_interval - time.perf_counter()
+            if wait > 0:
+                time.sleep(wait)
+            last_call = time.perf_counter()
+            try:
+                given = answer(sample)
+            except RateLimited as error:
+                # A quota that outlasts the run is not the model being wrong:
+                # scoring every remaining question as a failure would report
+                # an accuracy that measures the quota. Stop instead.
+                raise BenchmarkInterrupted(index - 1, len(chosen), str(error)) from None
+            except ToolExecutionError as error:
+                # A failed call is scored wrong, not skipped: skipping would let
+                # an unreliable endpoint inflate its own accuracy.
+                given = ""
+                failures.append({"id": sample.id, "error": str(error)})
+            else:
+                if checkpoint:
+                    _append(checkpoint, {"model": model, "id": sample.id, "answered": given})
         correct = answers_match(given, sample.answer)
         outcomes.append((sample.type, correct, token_f1(given, sample.answer)))
         if not correct and len(mistakes) < 25:
@@ -161,10 +198,27 @@ def evaluate(
         "selection": selection or {"method": f"first {len(chosen)}" if limit else "every question"},
         **summarise(outcomes),
         "failed_calls": len(failures),
+        "answers_reused_from_checkpoint": reused,
         "failures": failures[:25],
         "mistakes": mistakes,
     }
     return report
 
 
-__all__ = ["BenchmarkInterrupted", "evaluate", "model_answerer", "picture", "select"]
+def _append(path: str, entry: dict[str, str]) -> None:
+    """Add one answer to the checkpoint and make sure it reached the disk."""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+__all__ = [
+    "BenchmarkInterrupted",
+    "evaluate",
+    "load_checkpoint",
+    "model_answerer",
+    "picture",
+    "select",
+]

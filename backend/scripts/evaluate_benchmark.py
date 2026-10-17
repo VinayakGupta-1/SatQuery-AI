@@ -52,7 +52,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config.settings import get_settings  # noqa: E402
 from app.evaluation.datasets import DatasetError, load_records, load_rsvqa  # noqa: E402
-from app.evaluation.runner import BenchmarkInterrupted, evaluate, model_answerer, select  # noqa: E402
+from app.evaluation.runner import (  # noqa: E402
+    BenchmarkInterrupted,
+    evaluate,
+    load_checkpoint,
+    model_answerer,
+    select,
+)
 from app.tools.vlm.client import VisionLanguageModel  # noqa: E402
 from app.tools.vlm.core import vlm_unavailable_reason  # noqa: E402
 
@@ -88,6 +94,10 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--delay", type=float, default=0.0, help="minimum seconds between model calls")
         command.add_argument("--out", default=None, help="report path (default: evaluation_reports/)")
         command.add_argument("--no-latest", action="store_true", help="do not update latest.json")
+        command.add_argument(
+            "--fresh", action="store_true",
+            help="ignore answers saved by an earlier, interrupted run of this benchmark",
+        )
 
     args = parser.parse_args(argv)
 
@@ -131,16 +141,26 @@ def main(argv: list[str] | None = None) -> int:
         if done == count or done % 25 == 0:
             print(f"  {done}/{count}", flush=True)
 
+    # Every answer is saved as it arrives, so a run the quota cuts short is
+    # resumed by running the same command again.
+    checkpoint = os.path.join(REPORTS, f"{name}_answers.jsonl")
+    if args.fresh and os.path.exists(checkpoint):
+        os.remove(checkpoint)
+    saved = len(load_checkpoint(checkpoint, model.identity))
+    if saved:
+        print(f"Resuming: {saved} answer(s) from an earlier run are reused from {checkpoint}.")
+
     try:
         report = evaluate(
             samples, model_answerer(model), name, model.identity, args.limit, progress,
-            min_interval=args.delay, selection=selection,
+            min_interval=args.delay, selection=selection, checkpoint=checkpoint,
         )
     except BenchmarkInterrupted as stopped:
         print(
             f"\n{stopped}\nNo report was written: scoring the unanswered questions as "
-            "wrong would measure the quota, not the model. Rerun with a smaller "
-            "--limit, or once the quota has reset.",
+            "wrong would measure the quota, not the model. The answers so far are "
+            f"saved in {checkpoint}; run the same command again once the quota has "
+            "reset and only the remaining questions are asked.",
             file=sys.stderr,
         )
         return 3
@@ -151,6 +171,10 @@ def main(argv: list[str] | None = None) -> int:
         json.dump(report, handle, indent=2)
     if not args.no_latest:
         shutil.copyfile(out, os.path.join(REPORTS, "latest.json"))
+    # The report is now the record; a stale checkpoint must not leak into a
+    # later run with a different prompt or sample.
+    if os.path.exists(checkpoint):
+        os.remove(checkpoint)
 
     print(
         f"\nOverall accuracy {report['overall_accuracy']:.1%}, average per type "

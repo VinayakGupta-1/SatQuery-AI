@@ -346,6 +346,47 @@ def test_an_exhausted_quota_stops_the_run_instead_of_scoring_it():
     assert "quota" in str(stopped.value)
 
 
+def test_a_run_the_quota_cut_short_resumes_without_asking_again(tmp_path):
+    from app.evaluation.runner import BenchmarkInterrupted
+    from app.tools.vlm.client import RateLimited
+
+    checkpoint = str(tmp_path / "answers.jsonl")
+    asked: list[str] = []
+
+    def quota_runs_out(sample):
+        asked.append(sample.id)
+        if sample.id == "2":
+            raise RateLimited(400.0)
+        return "yes"
+
+    with pytest.raises(BenchmarkInterrupted):
+        evaluate(samples(), quota_runs_out, "tiny", "fake:model", checkpoint=checkpoint)
+
+    asked.clear()
+    report = evaluate(samples(), lambda sample: asked.append(sample.id) or "yes",
+                      "tiny", "fake:model", checkpoint=checkpoint)
+    first = samples()[0].id
+    assert first not in asked  # answered before the quota ran out, not asked again
+    assert len(asked) == len(samples()) - 1
+    assert report["answers_reused_from_checkpoint"] == 1
+    assert report["samples"] == len(samples())
+
+
+def test_a_checkpoint_never_lends_one_models_answers_to_another(tmp_path):
+    from app.evaluation.runner import load_checkpoint
+
+    checkpoint = tmp_path / "answers.jsonl"
+    checkpoint.write_text(
+        '{"model": "a", "id": "1", "answered": "yes"}\n'
+        '{"model": "b", "id": "1", "answered": "no"}\n'
+        '{"model": "a", "id": "2", "answ',  # cut off when the process was killed
+        encoding="utf-8",
+    )
+    assert load_checkpoint(str(checkpoint), "a") == {"1": "yes"}
+    assert load_checkpoint(str(checkpoint), "b") == {"1": "no"}
+    assert load_checkpoint(str(tmp_path / "missing.jsonl"), "a") == {}
+
+
 def test_the_script_writes_no_report_when_the_quota_runs_out(monkeypatch, tmp_path, capsys):
     from app.tools.vlm.client import RateLimited
 
