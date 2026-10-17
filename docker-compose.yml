@@ -1,0 +1,31 @@
+# SatQuery AI in one command:
+#
+#   docker compose up --build        then open http://localhost:8080
+#
+# Configuration comes from backend/.env when it exists (copy
+# backend/.env.example). With none, everything runs with defaults: offline
+# rules read the questions, imagery is fetched from Planetary Computer, and
+# the API is open (no sign-in).
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      # The workspace is served from the frontend container's origin.
+      SATQUERY_CORS_ORIGINS: http://localhost:8080
+    volumes:
+      - satquery-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  satquery-data:

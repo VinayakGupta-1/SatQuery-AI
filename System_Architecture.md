@@ -287,6 +287,21 @@ answered with exactly that and what to change. Every result carries an
 acquisition report: resolved place, each scene's date, platform and cloud over
 the area, catalogue item ids, and every adjustment made.
 
+### 5.5 Accounts, History and Progress
+
+* **Accounts (Supabase).** With `SATQUERY_SUPABASE_URL` and
+  `SATQUERY_SUPABASE_PUBLISHABLE_KEY` set, `/api/capabilities` tells the
+  workspace to use Supabase accounts: sign-up with email verification,
+  sign-in, password reset. Every analysis endpoint then requires a bearer
+  token, verified locally against the project's published ES256 keys
+  (signature, expiry, issuer, audience, role). Without them the API is open.
+* **History.** Each result is written to the project's `analyses` table with
+  the user's own token, so row level security keeps it private; results
+  survive a restart and another user's task id answers 404.
+* **Progress.** A request may carry a `client_ref`; `GET
+  /api/progress/{client_ref}` reports the stage reached and, while imagery
+  is fetched, the fetcher's current step.
+
 ---
 
 ## 6. Agentic Controller
@@ -560,7 +575,11 @@ separates the **agent's decision-making** from the **specialist execution layer*
 * Change Detection
 * Land-Use / Land-Cover Classification
 * Multispectral analysis
-* SAR analysis
+* SAR analysis: a water map from one scene; from a dry-season reference and
+  a flood-period scene, a flood map in which flooding is *new* water and
+  permanent water (rivers, lakes, sea) is reported separately. Both dates
+  are thresholded with one threshold so a threshold difference cannot pass
+  for a flood.
 
 ### 9.4 Vision-Language Tasks
 
@@ -750,6 +769,10 @@ This makes the architecture easier to test and maintain.
 * **Request limits.** Questions are capped at 2,000 characters and locations
   at 200; an upload is refused as soon as it crosses the size limit, before it
   is entirely in memory.
+* **Accounts.** With Supabase configured, only a verified user's token
+  reaches the analysis endpoints, and every database read and write is made
+  with that token, never a service key, so row level security applies to the
+  backend too.
 * **Retention.** Task records live in memory (the last 200). A task pushed out
   of that list has its files deleted, and task files older than
   `SATQUERY_RETENTION_HOURS` (default 24) are purged at startup, because

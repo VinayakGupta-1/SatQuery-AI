@@ -25,7 +25,7 @@ Built for Smart India Hackathon 2026 (problem statement SIH26167).
 | Vegetation, water, built-up indices | "How healthy is the vegetation?" | optical, 1 scene | NDVI, NDWI, NDBI with nodata, scale/offset and cloud (SCL/QA) masking |
 | Land-cover classification | "Classify the land cover" | optical, 1 scene | Transparent NDWI/NDVI/NDBI decision rules: water, dense and sparse vegetation, built-up, bare soil |
 | Landscape object detection | "How many water bodies are there?" | optical, 1 scene | Connected regions of one land-cover class, with area, bounding box and centroid |
-| SAR water and flood mapping | "Find areas affected by flooding" | SAR (VV/VH), 1 scene | Calibrated backscatter in dB, speckle filter, fixed or Otsu threshold |
+| SAR water and flood mapping | "Find areas affected by flooding" | SAR (VV/VH): 1 scene, or a dry-season reference + flood-period scene | Calibrated backscatter in dB, speckle filter, fixed or Otsu threshold. With a reference, flooding is *new* water: rivers, lakes and sea are reported separately and not counted |
 | Optical + SAR water fusion | "Find areas affected by flooding" | 1 optical + 1 SAR, ≤12 days apart | NDWI where the sky is clear, radar backscatter under cloud; every pixel labelled by which sensor saw water, with Cohen's kappa for their agreement |
 | Change detection | "Show where vegetation decreased between these dates" | 2 co-registered scenes | Index differencing for optical pairs (the index follows the question); dB log-ratio for radar pairs |
 | Visual question answering | "Is there a river in this image?" | optical, SAR, or an optical + SAR pair | A vision-language model reads a rendered preview. **Off unless you enable it** |
@@ -41,7 +41,17 @@ in 10 m pixels — and SatQuery says why instead of guessing.
 
 ## Quick start
 
-You need Python and Node.js (tested on Python 3.13 and Node 24; Vite needs
+**With Docker** (nothing else to install):
+
+```bash
+docker compose up --build         # then open http://localhost:8080
+```
+
+It reads `backend/.env` when there is one. The images are written for Linux
+containers but have not yet been built on a machine with Docker; CI (below)
+runs the same pinned dependencies on Linux.
+
+**Without Docker** you need Python and Node.js (tested on Python 3.13 and Node 24; Vite needs
 Node 20.19 or newer).
 
 ```bash
@@ -49,7 +59,7 @@ Node 20.19 or newer).
 cd backend
 python -m venv .venv
 .venv\Scripts\activate            # Windows  (macOS/Linux: source .venv/bin/activate)
-pip install -r requirements.txt
+pip install -r requirements-lock.txt   # exact, tested versions (requirements.txt has the ranges)
 uvicorn app.main:app --reload     # http://127.0.0.1:8000, docs at /docs
 
 # 2. The workspace, in a second terminal
@@ -66,7 +76,7 @@ Ask about a place and attach nothing. SatQuery fetches the imagery itself:
 |---|---|
 | "How healthy is the vegetation in Pune?" | The clearest Sentinel-2 L2A scene of the last 120 days |
 | "Map the surface water around Chilika Lake in March 2024" | The clearest Sentinel-2 scene from March 2024 |
-| "Find the areas affected by flooding near Kochi in August 2024" | A Sentinel-1 RTC radar scene, which sees through monsoon cloud |
+| "Find the areas affected by flooding near Kochi in August 2024" | Two Sentinel-1 RTC radar scenes on the same orbit track: August 2024, and the January-April dry season as reference. Radar sees through monsoon cloud; the reference keeps the sea and backwaters from counting as flood (Kochi: 0.9% flooded, 48.2% permanent water) |
 | "Has vegetation been lost around Hosur between 2019 and 2025?" | One scene from each year, the 2019 one matched to the season of the 2025 one, on one pixel grid |
 | "Fuse optical and SAR to map water near 9.97, 76.28" | A Sentinel-2 scene and the nearest Sentinel-1 pass within 12 days |
 
@@ -141,6 +151,20 @@ anything:
   model on your own machine instead, and `SATQUERY_VQA_MODEL` swaps in any
   vision model — including one fine-tuned on remote-sensing data — without a
   code change.
+- **`SATQUERY_SUPABASE_URL`** and **`SATQUERY_SUPABASE_PUBLISHABLE_KEY`**:
+  accounts. People sign up with a name, email and password, confirm the
+  address from the email Supabase sends, and sign in; every analysis request
+  then carries their access token, which the backend verifies against the
+  project's published keys, and each person's results are kept in the
+  project's `analyses` table, readable only by them (row level security).
+  Without these two values the API is open and the workspace opens local
+  sessions. Both values are public by design. In the Supabase dashboard set
+  **Authentication -> URL Configuration -> Site URL** to where the workspace
+  runs (`http://localhost:5173`, or `http://localhost:8080` with Docker) and
+  add `<that URL>/login` under Redirect URLs, so verification and
+  password-reset links come back to the app. Supabase's built-in email
+  service only delivers to members of your Supabase organisation; configure
+  custom SMTP (Authentication -> Emails) before inviting anyone else.
 - **`SATQUERY_FETCH_ENABLED=false`**: turns automatic imagery off, for a
   server that must not reach the internet; uploads are then required. With it
   on (the default), the place named in a question goes to OpenStreetMap's
@@ -231,7 +255,7 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 697 tests
+python -m pytest                                   # 735 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```
@@ -247,6 +271,12 @@ npm test                          # Vitest: formatting, suggestions, request bod
 npm run lint && npm run build     # ESLint, then tsc -b and the production build
 ```
 
+GitHub Actions (`.github/workflows/ci.yml`) runs both backend suites and the
+frontend tests, lint and build on every push and pull request.
+
+Questions can be asked in Hindi as well as English; month names, places and
+the analysis are read from the Hindi text even without a hosted model.
+
 ## Layout
 
 ```
@@ -259,7 +289,10 @@ backend/
     tools/        indices, landcover, detection, sar, change, fusion,
                   vlm (VQA, captioning, change-VQA), raster I/O, AOI and CRS
     evaluation/   benchmark loading and scoring for the vision model
-    api/          FastAPI routes, uploads, response shaping
+    acquisition/  automatic imagery: geocoding, STAC search, scene choice, download
+    auth/         Supabase access-token verification
+    storage/      uploads and outputs, with retention
+    api/          FastAPI routes, uploads, response shaping, history, progress
   scripts/        demo data generator, benchmark evaluation
   tests/
 frontend/         React + TypeScript workspace

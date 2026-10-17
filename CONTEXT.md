@@ -3,9 +3,8 @@
 > **For the next Claude session.** The user will say "read the context file and
 > continue". This file says what the project is, what exists, what was done in
 > earlier sessions, what is still open, and the traps to avoid. Last updated
-> **2026-10-17**. The automatic-imagery work of that day (section 3a) is in
-> commit `80c202e` on `main`, verified live with the user's Groq key. Check
-> `git log` first: anything newer happened after this file was written.
+> **2026-10-17**, after the audit and the Supabase work (sections 3a and 3b).
+> Check `git log` first: anything newer happened after this file was written.
 
 ---
 
@@ -49,9 +48,7 @@ limits. The user has been told this and was advised to relabel the box
 
 - **Code: complete.** Commits `1081837` (the whole architecture) and `18e330e`
   (current Groq models, quota handling).
-- **Tests:** 697 backend tests pass on both raster backends (641 before
-  2026-10-17; 44 in `tests/test_acquisition.py`, 12 in
-  `tests/test_limits_and_retention.py`), plus 15 Vitest tests in the frontend. The frontend lints and
+- **Tests:** 735 backend tests pass on both raster backends, plus 15 Vitest tests in the frontend. The frontend lints and
   builds clean.
 - **UI:** verified in headless Chrome at desktop and phone width (Playwright
   driving the installed Chrome, from a scratch virtual environment).
@@ -134,11 +131,65 @@ without files fetches it.
 - **Not done:** no Landsat; no mosaicking of different dates; areas over
   20 km are cut, not tiled.
 
+## 3b. Audit, accounts, flood fix, map, Hindi, infrastructure (2026-10-17)
+
+- **Audit fixes** (`8172154`):
+  - Storage retention (`SATQUERY_RETENTION_HOURS`, and deletion on
+    eviction from the in-memory store).
+  - Request limits (questions 2,000 chars, locations 200, uploads refused
+    while reading).
+  - Only https asset URLs are read; yes/no questions go to the VLM.
+  - Vitest in the frontend; tests use a throwaway storage root.
+- **Resumable benchmark** (`1e2268c`): answers are saved to
+  `evaluation_reports/rsvqa_lr_answers.jsonl` as they arrive.
+- **Supabase accounts** (`9d7cde7`):
+  - Project `satquery-ai`, ref `oiibjaxmmthlsxpdrsmf`, ap-south-1, free
+    plan, org `pzsilxgrzamyptxaswyh`.
+  - `backend/.env` has `SATQUERY_SUPABASE_URL` and
+    `SATQUERY_SUPABASE_PUBLISHABLE_KEY` (both public).
+  - Table `public.analyses` with row-level security (migration in
+    `supabase/migrations/`).
+  - Backend: `app/auth/supabase.py` verifies ES256 tokens against the
+    project's JWKS; `app/api/auth.py` is the dependency; `app/api/history.py`
+    reads and writes as the user (never a service key).
+  - Frontend: `services/auth.ts` has a Supabase provider (sign-up with email
+    verification, resend, reset, new password) and keeps the local provider
+    for open deployments. `AuthProvider` sits *inside* `CapabilitiesProvider`.
+  - Real progress: `client_ref` plus `GET /api/progress/{ref}`.
+  - Verified live: 401 for no, garbage or anon-key tokens; anon is denied
+    the table; the sign-in UI round-trips to Supabase.
+  - **Not verified: a real sign-up.** Creating a pre-verified test user via
+    SQL was (rightly) blocked by the auto-mode classifier as bypassing email
+    verification. The user must sign up with their own email.
+- **Flood fix** (`1567660`):
+  - A flood question fetches a January–April dry-season reference plus the
+    flood-period scene (same orbit track).
+  - `sar_analysis` with 2 dated scenes produces `sar_flood_map`: flooded,
+    permanent water, receded, dry; one threshold for both dates.
+  - The validator's period check applies to the latest scene only for this
+    tool (`period_applies_to_latest_only`).
+  - Radar fetches read VV only unless the question names VH.
+  - Kochi, August 2024: 0.9 % flooded, 48.2 % permanent (was "49 % water").
+- **Map** (`d524c16`): Leaflet with OpenStreetMap tiles, darkened in CSS.
+  CARTO now needs an API key, so it isn't used.
+  - The composer has "Pick the area on a map" (drawing fills the location
+    field); results have "Where this is".
+- **Hindi** (`8d1a295`): Hindi months, task words and place names in the
+  rule reader. Nominatim resolves Devanagari names; the hosted model
+  already handled Hindi.
+- **Infrastructure:**
+  - `backend/requirements-lock.txt` installs cleanly into a fresh venv,
+    and all tests pass on it.
+  - `backend/Dockerfile`, `frontend/Dockerfile` (with `nginx.conf`) and
+    `docker-compose.yml`. **Untested: no Docker on this machine.**
+  - `.github/workflows/ci.yml`, and an MIT `LICENSE`.
+- **Tests:** 735 backend tests (both raster backends) plus 15 Vitest.
+
 ## 4. How to run things
 
 ```bash
 # Backend (from backend/)
-.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 697 tests
+.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 735 tests
 SATQUERY_RASTER_BACKEND=builtin .venv/Scripts/python.exe -m pytest -q -p no:warnings  # the same, without GDAL
 .venv/Scripts/uvicorn app.main:app --reload                                           # http://127.0.0.1:8000
 
@@ -214,7 +265,17 @@ never call Groq.
      The CPU fallback works but is slow.
    - Compare `benchmark_report.json` with `benchmark_report_base.json`, and
      with the Groq run from item 1.
-3. **Resolved 2026-10-17.** `.claude/settings.json` (an old permission
+3. **Supabase: things only the user can do.**
+   - Set Authentication → URL Configuration → Site URL to
+     `http://localhost:5173`, and add `http://localhost:5173/login` (and
+     `http://localhost:8080/login` for Docker) to Redirect URLs.
+   - Sign up once with their own email to verify the whole flow end to end.
+   - Configure custom SMTP before inviting anyone outside the Supabase
+     organisation: the built-in mailer only sends to org members.
+6. **Docker and CI** were written but never run (no Docker here; CI runs on
+   the first push). Check the first CI run on GitHub and fix anything
+   Linux-specific.
+7. **Resolved 2026-10-17.** `.claude/settings.json` (an old permission
    allowlist) was restored rather than deleted; the user said "yes for
    everything" without picking an option.
 4. **Skipped at the user's choice:** testing with real Cartosat-2S / RISAT
@@ -299,6 +360,9 @@ them. Each fix has a test.
     `ast.parse`.
   - For scripted edits, read and write bytes and preserve the file's own
     endings.
+  - Regexes with `\b` written through a Bash heredoc came out as backspace
+    bytes (0x08) twice on 2026-10-17. Put edit scripts in a file with the
+    Write tool, then scan for control bytes.
 - **Windows console:** set `PYTHONIOENCODING=utf-8` when printing model
   output.
 - **Background jobs:** foreground waits over 10 minutes time out; run long
