@@ -491,6 +491,14 @@
   color: var(--sq-text);
 }
 
+/* What the fetcher is doing right now: "Downloading 5 bands of ...". */
+.sq-analysing__detail {
+  margin: calc(-1 * var(--sq-2)) 0 0;
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  overflow-wrap: anywhere;
+}
+
 .sq-analysing__percent {
   font-size: var(--sq-text-sm);
   color: var(--sq-accent-bright);

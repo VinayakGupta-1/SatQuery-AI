@@ -5,13 +5,15 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from typing import Any
+from typing import Any, Callable
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
 from app.acquisition import acquire as acquire_imagery
+from app.api import history
+from app.api.auth import current_user
 from app.api.ingestion import (
     IngestionError,
     safe_filename,
@@ -31,7 +33,9 @@ from app.api.schemas import (
     TaskStatus,
     ValidationResponse,
 )
+from app.api.progress import CLIENT_REF, progress_store
 from app.api.store import TaskRecord, task_store
+from app.auth import User
 from app.config.settings import get_settings
 from app.controller.pipeline import ImageryAcquirer, SatQueryPipeline
 from app.controller.task_understanding.task_understanding import TaskUnderstandingResult
@@ -175,7 +179,12 @@ async def _ingest_files(
         raise HTTPException(400, str(error)) from error
 
 
-def _fetcher(task_id: str, location: str | None, summaries: list[ImageSummary]) -> ImageryAcquirer:
+def _fetcher(
+    task_id: str,
+    location: str | None,
+    summaries: list[ImageSummary],
+    progress: Callable[[str], None] | None = None,
+) -> ImageryAcquirer:
     """An acquirer that fetches into the task's upload directory.
 
     Each fetched file is then described by the same code that describes an
@@ -185,7 +194,10 @@ def _fetcher(task_id: str, location: str | None, summaries: list[ImageSummary]) 
 
     def fetch(understanding: TaskUnderstandingResult) -> tuple[list[ImageInput], AcquisitionReport]:
         outcome = acquire_imagery(
-            understanding, location, get_artifact_store().upload_directory(task_id)
+            understanding,
+            location,
+            get_artifact_store().upload_directory(task_id),
+            progress=progress,
         )
         images: list[ImageInput] = []
         for fetched in outcome.images:
@@ -237,6 +249,14 @@ async def create_task(
     sensor: str | None = Form(
         None, description="Sensor name, e.g. 'sentinel2'. Disambiguates band numbers."
     ),
+    client_ref: str | None = Form(
+        None,
+        description=(
+            "A random reference chosen by the client. While the request runs, "
+            "GET /api/progress/{client_ref} reports the stage it has reached."
+        ),
+    ),
+    user: User | None = Depends(current_user),
 ) -> TaskResponse:
     """Run a natural-language query against uploaded or fetched imagery.
 
@@ -262,13 +282,23 @@ async def create_task(
 
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     user_parameters = _parse_parameters(parameters)
+    owner = user.id if user else None
+    ref = client_ref if client_ref and CLIENT_REF.match(client_ref) else None
+
+    def on_stage(stage: str, status: str, detail: str = "") -> None:
+        if ref:
+            progress_store.report(ref, owner, stage, status, detail)
+
     summaries: list[ImageSummary] = []
     acquire: ImageryAcquirer | None = None
     if files:
         images, summaries = await _ingest(files, task_id, as_scene, sensor)
     else:
         images = []
-        acquire = _fetcher(task_id, location, summaries)
+        acquire = _fetcher(
+            task_id, location, summaries,
+            progress=lambda detail: on_stage("acquisition", "running", detail),
+        )
 
     # Off the event loop: a fetch waits on the network for tens of seconds,
     # and the server must keep answering other requests meanwhile.
@@ -280,6 +310,7 @@ async def create_task(
         output_directory=get_artifact_store().output_directory(task_id),
         user_parameters=user_parameters or None,
         acquire=acquire,
+        on_stage=on_stage,
     )
 
     artifacts = collect_artifacts(run)
@@ -291,9 +322,16 @@ async def create_task(
                 artifact_id: artifact["path"]
                 for artifact_id, artifact in artifacts.items()
             },
+            user_id=owner,
         )
     )
-    return build_task_response(run, summaries, artifacts)
+    response = build_task_response(run, summaries, artifacts)
+    if user is not None:
+        # Kept per user in Supabase, so the result outlives this process.
+        await run_in_threadpool(history.save, user, response.model_dump(mode="json"))
+    if ref:
+        progress_store.report(ref, owner, "result_integration", "done", "", done=True)
+    return response
 
 
 @router.post("/validate", response_model=ValidationResponse)
@@ -302,6 +340,7 @@ async def validate_task(
     files: list[UploadFile] | None = File(None),
     as_scene: bool = Form(False),
     sensor: str | None = Form(None),
+    user: User | None = Depends(current_user),
 ) -> ValidationResponse:
     """Check whether a query and imagery would run, without executing anything.
 
@@ -336,8 +375,28 @@ async def validate_task(
 
 
 @router.get("", response_model=list[TaskListEntry])
-def list_tasks(limit: int = 50) -> list[TaskListEntry]:
-    """List recent tasks, newest first."""
+def list_tasks(limit: int = 50, user: User | None = Depends(current_user)) -> list[TaskListEntry]:
+    """List the caller's recent tasks, newest first.
+
+    Signed-in users get their stored history, which survives restarts; if
+    the history service is unreachable, the tasks this process remembers.
+    """
+    limit = max(1, min(limit, 200))
+    if user is not None:
+        try:
+            return [
+                TaskListEntry(
+                    task_id=row["id"],
+                    query=row["query"],
+                    status=TaskStatus(row["status"]),
+                    outcome=row["outcome"],
+                    answer=row["answer"],
+                )
+                for row in history.recent(user, limit)
+            ]
+        except history.HistoryUnavailable:
+            pass
+    owner = user.id if user else None
     return [
         TaskListEntry(
             task_id=record.run.task_id,
@@ -346,17 +405,28 @@ def list_tasks(limit: int = 50) -> list[TaskListEntry]:
             outcome=record.run.outcome,
             answer=record.run.final.answer,
         )
-        for record in task_store.list(limit=max(1, min(limit, 200)))
-    ]
+        for record in task_store.list(limit=200)
+        if record.user_id == owner
+    ][:limit]
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-def get_task(task_id: str) -> TaskResponse:
-    """Retrieve a task that has already run."""
+def get_task(task_id: str, user: User | None = Depends(current_user)) -> TaskResponse:
+    """Retrieve a task that has already run -- only the caller's own."""
     record = task_store.get(task_id)
-    if record is None:
-        raise HTTPException(404, f"No task with id '{task_id}'.")
-    return build_task_response(record.run, record.images, collect_artifacts(record.run))
+    owner = user.id if user else None
+    if record is not None and record.user_id == owner:
+        return build_task_response(record.run, record.images, collect_artifacts(record.run))
+    if user is not None and record is None:
+        # Not in this process's memory: it may have run before a restart.
+        try:
+            stored = history.fetch(user, task_id)
+        except history.HistoryUnavailable:
+            stored = None
+        if stored is not None:
+            return TaskResponse.model_validate(stored)
+    # Someone else's task is reported exactly like a missing one.
+    raise HTTPException(404, f"No task with id '{task_id}'.")
 
 
 @router.get("/{task_id}/artifacts/{artifact_id}")

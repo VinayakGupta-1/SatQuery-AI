@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { ApiError } from '../services/http'
-import type { TaskResponse, ValidationResponse } from '../types/api'
+import type { ProgressReport, TaskResponse, ValidationResponse } from '../types/api'
 
 /** One raster staged for the next analysis. */
 export interface StagedFile {
@@ -21,6 +21,8 @@ export interface RunState {
   uploaded: number
   /** True when no imagery was attached and the server is fetching it. */
   fetching: boolean
+  /** The last stage the server reported for this run, when it reports. */
+  progress: ProgressReport | null
   startedAt: number | null
   /** Wall-clock round trip, measured in the browser. */
   durationMs: number | null

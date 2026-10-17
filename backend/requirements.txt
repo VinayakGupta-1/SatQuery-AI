@@ -25,6 +25,10 @@ numpy>=1.26
 # force that path even when rasterio is installed.
 rasterio>=1.3
 
+# ---- users ----
+# Verifies Supabase access tokens (ES256) when SATQUERY_SUPABASE_URL is set.
+pyjwt[crypto]>=2.10
+
 # ---- HTTP API ----
 fastapi>=0.110
 uvicorn[standard]>=0.29

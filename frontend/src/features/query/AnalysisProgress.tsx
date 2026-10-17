@@ -7,38 +7,60 @@ import type { RunState } from '../../context/workspaceContext'
  * The stages the request passes through on the server, in the order the
  * controller runs them (`backend/app/controller/pipeline.py`).
  *
- * These are real stage names, not invented activity. What the browser cannot
- * observe is *when* each one begins - the API is a single synchronous call
- * with no progress channel - so the strip advances on a paced timeline and
- * deliberately claims nothing more than "this is what is happening". No stage
- * is ever ticked off, no timings are reported, and no model reasoning is
- * shown. The authoritative per-stage outcome arrives with the result and is
- * available under "Analysis details".
+ * The browser sends a reference with the request and polls
+ * `/api/progress/{ref}`, so the strip shows the stage the server has actually
+ * reached - and, while imagery is fetched, what the fetcher is doing ("Found
+ * Pune", "Downloading 5 bands of the 2026-10-15 scene"). Against a backend that
+ * does not report, it falls back to a paced timeline that claims no more than
+ * "this is what is happening".
  */
 interface Stage {
+  key: string
   name: string
-  /** How long to dwell on the stage before moving on. */
+  /** How long the fallback timeline dwells on the stage. */
   dwellMs: number
 }
 
 const STAGES: Stage[] = [
-  { name: 'Understanding the request', dwellMs: 2600 },
-  { name: 'Checking imagery against requirements', dwellMs: 2600 },
-  { name: 'Selecting a capability', dwellMs: 2600 },
-  { name: 'Running the analysis', dwellMs: 2600 },
-  { name: 'Preparing the result', dwellMs: 2600 },
+  { key: 'understand', name: 'Understanding the request', dwellMs: 2600 },
+  { key: 'plan', name: 'Planning and choosing a capability', dwellMs: 2600 },
+  { key: 'check', name: 'Checking imagery against requirements', dwellMs: 2600 },
+  { key: 'run', name: 'Running the analysis', dwellMs: 2600 },
+  { key: 'result', name: 'Preparing the result', dwellMs: 2600 },
 ]
 
 /**
  * With nothing attached, the server first finds the place and downloads
  * Sentinel imagery for it - the longest stage by far, typically 10 to 45
- * seconds - so the strip says so and lingers there.
+ * seconds.
  */
 const FETCH_STAGES: Stage[] = [
-  { name: 'Understanding the request', dwellMs: 2000 },
-  { name: 'Finding the place and fetching satellite imagery', dwellMs: 20000 },
+  STAGES[0],
+  { key: 'fetch', name: 'Finding the place and fetching satellite imagery', dwellMs: 20000 },
   ...STAGES.slice(1),
 ]
+
+/** The step under way once the server has reported finishing `stage`. */
+function currentStep(stage: string, status: string, fetching: boolean): string {
+  switch (stage) {
+    case 'understanding':
+      return fetching ? 'fetch' : 'plan'
+    case 'acquisition':
+      return status === 'running' ? 'fetch' : 'plan'
+    case 'adaptation':
+    case 'classification':
+    case 'planning':
+    case 'input_requirements':
+      return 'plan'
+    case 'tool_selection':
+      return 'check'
+    case 'validation':
+    case 'parameter_configuration':
+      return 'run'
+    default:
+      return 'result'
+  }
+}
 
 interface AnalysisProgressProps {
   run: RunState
@@ -46,21 +68,36 @@ interface AnalysisProgressProps {
 }
 
 export function AnalysisProgress({ run, onCancel }: AnalysisProgressProps) {
-  const [stage, setStage] = useState(0)
+  const [paced, setPaced] = useState(0)
   const uploading = run.phase === 'uploading'
   const stages = run.fetching ? FETCH_STAGES : STAGES
+  const reported = run.progress
 
   useEffect(() => {
     if (uploading) {
-      setStage(0)
+      setPaced(0)
       return
     }
+    // The paced timeline only runs while the server has reported nothing.
     // Hold on the last stage rather than looping: a loop would suggest the
     // work had restarted.
-    if (stage >= stages.length - 1) return
-    const timer = window.setTimeout(() => setStage(stage + 1), stages[stage].dwellMs)
+    if (reported || paced >= stages.length - 1) return
+    const timer = window.setTimeout(() => setPaced(paced + 1), stages[paced].dwellMs)
     return () => window.clearTimeout(timer)
-  }, [uploading, stage, stages])
+  }, [uploading, paced, stages, reported])
+
+  const stage = reported
+    ? Math.max(
+        0,
+        stages.findIndex(
+          (entry) => entry.key === currentStep(reported.stage, reported.status, run.fetching),
+        ),
+      )
+    : paced
+  const detail =
+    reported && reported.stage === 'acquisition' && reported.status === 'running'
+      ? reported.detail
+      : ''
 
   const label = uploading
     ? run.fetching
@@ -94,6 +131,7 @@ export function AnalysisProgress({ run, onCancel }: AnalysisProgressProps) {
             </span>
           ) : null}
         </p>
+        {detail ? <p className="sq-analysing__detail">{detail}</p> : null}
 
         {uploading ? (
           <div

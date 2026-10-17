@@ -464,6 +464,25 @@ export interface BackendInfo {
   supports_compressed_geotiff: boolean
 }
 
+/** `GET /api/progress/{client_ref}` - the stage a running analysis reached. */
+export interface ProgressReport {
+  /** Pipeline stage last reported: `understanding`, `acquisition`, ... */
+  stage: string
+  /** `running` while a stage is under way, otherwise how it ended. */
+  status: string
+  detail: string
+  done: boolean
+}
+
+/** How the workspace signs users in; every value is public by design. */
+export interface AuthInfo {
+  provider: 'supabase'
+  url: string
+  publishable_key: string
+  /** New accounts must confirm their email address before signing in. */
+  email_verification: boolean
+}
+
 export interface CapabilitiesResponse {
   version: string
   /** Tool ids that can actually execute right now. */
@@ -481,6 +500,8 @@ export interface CapabilitiesResponse {
   /** True when a question may be asked without imagery: the server then
    *  fetches Sentinel-2 / Sentinel-1 scenes for the place it names. */
   auto_fetch: boolean
+  /** Present when users must sign in; null when the API is open. */
+  auth: AuthInfo | null
   backend: BackendInfo
 }
 

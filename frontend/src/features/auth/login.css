@@ -179,6 +179,37 @@
   animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
 }
 
+.sq-login__notice {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-success);
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
+.sq-login__switch {
+  font-size: var(--sq-text-sm);
+  color: var(--sq-text-2);
+  text-align: center;
+}
+
+/* A text-styled button inside a sentence: "Create an account". */
+.sq-login__inline {
+  display: inline;
+  padding: 0;
+  margin: 0 0 0 var(--sq-1);
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--sq-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sq-login__inline:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
 .sq-login__note {
   font-size: var(--sq-text-xs);
   color: var(--sq-text-3);

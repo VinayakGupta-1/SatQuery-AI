@@ -31,8 +31,9 @@ const LoginPage = lazy(() => import('./features/auth/LoginPage'))
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CapabilitiesProvider>
+      {/* Capabilities first: they say whether this deployment has accounts. */}
+      <CapabilitiesProvider>
+        <AuthProvider>
           <WorkspaceProvider>
             <ErrorBoundary>
               <Routes>
@@ -67,8 +68,8 @@ export function App() {
               </Routes>
             </ErrorBoundary>
           </WorkspaceProvider>
-        </CapabilitiesProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </CapabilitiesProvider>
 
       {/* Outside the router on purpose: it has to survive the navigation it
           is covering. */}

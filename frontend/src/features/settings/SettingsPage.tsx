@@ -27,7 +27,7 @@ import { formatBytes, formatDate } from '../../utils/format'
  */
 export function SettingsPage() {
   const navigate = useNavigate()
-  const { session, signOut } = useAuth()
+  const { kind, session, signOut } = useAuth()
   const { capabilities, loading, error, reload } = useCapabilities()
   const { saved, records, forgetRecords } = useWorkspace()
   const reducedMotion = usePrefersReducedMotion()
@@ -131,18 +131,30 @@ export function SettingsPage() {
           </Definition>
           <Definition term="Opened">{formatDate(session?.openedAt)}</Definition>
           <Definition term="Issued by">
-            {session?.origin === 'server' ? 'The analysis service' : 'This device'}
+            {session?.origin === 'server' ? 'Supabase account (email verified)' : 'This device'}
           </Definition>
         </Definitions>
 
         <div style={{ marginTop: 'var(--sq-5)' }}>
           <Notice tone="info" title="How sessions work here">
-            This deployment of the SatQuery backend publishes no authentication
-            endpoint, so the workspace opens a session locally after confirming
-            the service is reachable. Your passphrase is never transmitted and
-            never stored. When the backend gains authentication, the session
-            provider in <span className="sq-mono">services/auth.ts</span> is the
-            only file that changes.
+            {kind === 'supabase' ? (
+              <>
+                Accounts live in this deployment's Supabase project. An account
+                is usable only once its email address is verified, and every
+                analysis request carries your access token, which the analysis
+                service checks. Your results are stored in your account, where
+                database rules let only you read them, so they survive a restart
+                of the service.
+              </>
+            ) : (
+              <>
+                This deployment has no accounts, so the workspace opens a session
+                locally after confirming the service is reachable. Your passphrase
+                is never transmitted and never stored. Set{' '}
+                <span className="sq-mono">SATQUERY_SUPABASE_URL</span> on the
+                backend to require verified accounts.
+              </>
+            )}
           </Notice>
         </div>
 

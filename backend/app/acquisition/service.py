@@ -29,9 +29,10 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from app.acquisition import reader
 from app.acquisition.catalog import (
@@ -70,6 +71,19 @@ SCL_CLOUD = (3, 8, 9, 10)
 CLEAR_ENOUGH = 0.10
 #: How many optical candidates may be checked on their own SCL band.
 MAX_CLOUD_CHECKS = 4
+
+#: Where step-by-step progress goes during one ``acquire`` call, if anywhere.
+_progress: ContextVar[Callable[[str], None] | None] = ContextVar("acquisition_progress", default=None)
+
+
+def _say(message: str) -> None:
+    report = _progress.get()
+    if report is not None:
+        try:
+            report(message)
+        except Exception:  # progress is a courtesy; it never breaks a fetch
+            pass
+
 
 #: Sentinel-2 processing baselines from this one on store reflectance + 1000.
 OFFSET_BASELINE = 4.0
@@ -217,6 +231,10 @@ class _Choice:
 
 
 def _candidates(request: SceneRequest, area: ResolvedArea, settings: Settings) -> list[Acquisition]:
+    _say(
+        f"Searching {request.collection.title} scenes from "
+        f"{request.start.isoformat()} to {request.end.isoformat()}"
+    )
     items = search(request.collection, area.bbox, request.start, request.end, settings)
     return group_acquisitions(items, area.bbox)
 
@@ -259,6 +277,7 @@ def _choose(
 
     best: _Choice | None = None
     for acquisition in ranked[:MAX_CLOUD_CHECKS]:
+        _say(f"Checking cloud over the area on the {acquisition.day.isoformat()} scene")
         scl = read_band(acquisition, collection.cloud_asset, grid, settings)
         cloud, covered = cloud_and_coverage(scl)
         choice = _Choice(acquisition, {collection.cloud_asset: scl}, cloud, covered)
@@ -432,6 +451,7 @@ def acquire(
     directory: str,
     settings: Settings | None = None,
     today: date | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> AcquisitionOutcome:
     """Find, download and write the imagery a question needs.
 
@@ -441,6 +461,20 @@ def acquire(
     """
     settings = settings or get_settings()
     today = today or datetime.now(timezone.utc).date()
+    token = _progress.set(progress)
+    try:
+        return _acquire(understanding, location, directory, settings, today)
+    finally:
+        _progress.reset(token)
+
+
+def _acquire(
+    understanding: TaskUnderstandingResult,
+    location: str | None,
+    directory: str,
+    settings: Settings,
+    today: date,
+) -> AcquisitionOutcome:
     report = AcquisitionReport(status="failed")
     try:
         if not settings.fetch_enabled:
@@ -448,7 +482,9 @@ def acquire(
                 "No imagery was attached, and automatic imagery fetching is turned off "
                 "on this server (SATQUERY_FETCH_ENABLED). Attach a GeoTIFF to analyse it."
             )
+        _say("Finding the place")
         area = resolve_area(location, understanding.original_query, understanding.context, settings)
+        _say(f"Found {area.name.split(',')[0]}")
         report.place, report.place_source, report.bbox_lonlat = area.name, area.source, area.bbox
         report.notes.extend(area.notes)
 
@@ -460,6 +496,10 @@ def acquire(
         os.makedirs(directory, exist_ok=True)
         images = []
         for index, (request, choice) in enumerate(_select(plan, area, grid, settings), start=1):
+            _say(
+                f"Downloading {len(request.assets)} bands of the "
+                f"{choice.acquisition.day.isoformat()} {choice.acquisition.collection.title} scene"
+            )
             bands = _download(choice, request.assets, grid, settings)
             images.append(
                 _write(choice, request.assets, bands, grid, request.role, f"image_{index}", directory)

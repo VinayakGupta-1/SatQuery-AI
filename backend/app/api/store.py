@@ -29,6 +29,9 @@ class TaskRecord:
     #: artifact_id -> absolute path on disk. Downloads are served only from
     #: this map, so a request can never reach a file the run did not produce.
     artifacts: dict[str, str] = field(default_factory=dict)
+    #: The Supabase user who ran it; ``None`` when sign-in is off. A record
+    #: is only ever served back to its owner.
+    user_id: str | None = None
 
 
 class TaskStore:

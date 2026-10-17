@@ -32,7 +32,7 @@ if BACKEND_ROOT not in sys.path:
 
 os.environ["SATQUERY_LOAD_DOTENV"] = "0"
 for _name in list(os.environ):
-    if _name.startswith(("SATQUERY_AGENT_", "SATQUERY_VQA_", "SATQUERY_FETCH_", "SATQUERY_GEOCODER_")):
+    if _name.startswith(("SATQUERY_AGENT_", "SATQUERY_VQA_", "SATQUERY_FETCH_", "SATQUERY_GEOCODER_", "SATQUERY_SUPABASE_")):
         del os.environ[_name]
 os.environ["SATQUERY_FETCH_ENABLED"] = "0"
 os.environ["SATQUERY_STORAGE_ROOT"] = tempfile.mkdtemp(prefix="satquery-tests-")

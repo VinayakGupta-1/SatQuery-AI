@@ -208,6 +208,20 @@ class Settings:
     #: it was issued for.
     vqa_api_key: str = field(default_factory=lambda: _env("VQA_API_KEY", "").strip())
 
+    # ---- users -----------------------------------------------------
+    #: A Supabase project for sign-up, email verification and sign-in. When it
+    #: is set, every analysis request must carry a valid Supabase access token
+    #: and each user's results are kept in that project's ``analyses`` table.
+    #: Unset, the API is open and the workspace opens sessions locally.
+    supabase_url: str = field(
+        default_factory=lambda: _env("SUPABASE_URL", "").strip().rstrip("/")
+    )
+    #: The project's publishable (or legacy anon) key. Public by design: it
+    #: identifies the project, and row level security decides what it can do.
+    supabase_publishable_key: str = field(
+        default_factory=lambda: _env("SUPABASE_PUBLISHABLE_KEY", "").strip()
+    )
+
     # ---- automatic imagery acquisition -------------------------------
     #: When a request arrives without imagery, find and download a scene for
     #: the place the question names. Sentinel-2 L2A (optical) and Sentinel-1
@@ -282,6 +296,11 @@ class Settings:
         if provider != "auto":
             return provider
         return "hosted" if self.has_agent_api_key else "rules"
+
+    @property
+    def auth_enabled(self) -> bool:
+        """Whether requests must come from a signed-in Supabase user."""
+        return bool(self.supabase_url and self.supabase_publishable_key)
 
     @property
     def vqa_is_local(self) -> bool:

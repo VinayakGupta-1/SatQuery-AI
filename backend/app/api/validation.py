@@ -12,7 +12,7 @@ from fastapi import APIRouter
 
 from app import __version__
 from app.api.registry import summarise
-from app.api.schemas import BackendInfo, CapabilitiesResponse, HealthResponse
+from app.api.schemas import AuthInfo, BackendInfo, CapabilitiesResponse, HealthResponse
 from app.config.settings import get_settings
 from app.registry.registry import get_all_tools
 from app.tools.binding import implemented_tool_ids
@@ -64,5 +64,10 @@ def capabilities() -> CapabilitiesResponse:
         vlm_local=settings.vqa_available and settings.vqa_is_local,
         # Fetching reads remote cloud-optimised GeoTIFFs, which needs GDAL.
         auto_fetch=settings.fetch_enabled and backend_report()["supports_compressed_geotiff"],
+        auth=(
+            AuthInfo(url=settings.supabase_url, publishable_key=settings.supabase_publishable_key)
+            if settings.auth_enabled
+            else None
+        ),
         backend=BackendInfo(**backend_report()),
     )

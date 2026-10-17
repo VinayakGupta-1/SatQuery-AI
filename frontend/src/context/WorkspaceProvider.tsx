@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import { analyze, validateRequest } from '../services/satquery'
+import { analyze, progress as fetchProgress, validateRequest } from '../services/satquery'
 import { ApiError } from '../services/http'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useCapabilities } from './capabilitiesContext'
@@ -18,6 +18,7 @@ const IDLE_RUN: RunState = {
   query: '',
   uploaded: 0,
   fetching: false,
+  progress: null,
   startedAt: null,
   durationMs: null,
   result: null,
@@ -156,6 +157,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const startedAt = Date.now()
       // Nothing attached: the server fetches imagery for the place named.
       const fetching = usable.length === 0
+      // The server reports each stage under this reference while it works.
+      const clientRef = `run_${crypto.randomUUID().replace(/-/g, '')}`
+      let polling = true
+      const poll = window.setInterval(() => {
+        if (!polling) return
+        fetchProgress(clientRef)
+          .then((report) => {
+            if (!polling) return
+            setRun((current) =>
+              current.phase === 'uploading' || current.phase === 'analysing'
+                ? { ...current, progress: report }
+                : current,
+            )
+          })
+          .catch(() => {
+            // Not reported yet, or an older backend: the strip falls back to
+            // its paced timeline.
+          })
+      }, 1000)
+      const stopPolling = () => {
+        polling = false
+        window.clearInterval(poll)
+      }
 
       setRun({
         ...IDLE_RUN,
@@ -167,7 +191,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       try {
         const result = await analyze(
-          { query, files: usable, asScene, sensor: sensor || null, location: location || null },
+          {
+            query,
+            files: usable,
+            asScene,
+            sensor: sensor || null,
+            location: location || null,
+            clientRef,
+          },
           {
             signal: controller.signal,
             onUploadProgress: (fraction) => {
@@ -192,6 +223,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           query,
           uploaded: 1,
           fetching,
+          progress: null,
           startedAt,
           durationMs,
           result,
@@ -229,6 +261,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           query,
           uploaded: 1,
           fetching,
+          progress: null,
           startedAt,
           durationMs: Date.now() - startedAt,
           result: null,
@@ -236,6 +269,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         })
         return null
       } finally {
+        stopPolling()
         controllerRef.current = null
       }
     },

@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api import progress as progress_routes
 from app.api import registry as registry_routes
 from app.api import tasks as task_routes
 from app.api import validation as system_routes
@@ -122,6 +123,7 @@ def create_app() -> FastAPI:
     app.include_router(registry_routes.router)
     app.include_router(task_routes.router)
     app.include_router(task_routes.analysis_router)
+    app.include_router(progress_routes.router)
 
     logger.info(
         "SatQuery started",
@@ -130,6 +132,7 @@ def create_app() -> FastAPI:
             "agent_provider": settings.resolved_agent_provider,
             "raster_backend": backend_report()["raster_backend"],
             "auto_fetch": settings.fetch_enabled,
+            "sign_in": "supabase" if settings.auth_enabled else "open",
             "purged_tasks": purged,
         },
     )

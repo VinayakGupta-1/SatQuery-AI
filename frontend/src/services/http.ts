@@ -54,6 +54,37 @@ export class ApiError extends Error {
   }
 }
 
+/* ---- signed-in requests --------------------------------------------- */
+
+let accessToken: (() => Promise<string | null>) | null = null
+let onUnauthorized: (() => void) | null = null
+
+/**
+ * Attach the signed-in user's token to every request, and learn when the
+ * backend stops accepting it. Set by the auth layer; `null` turns it off.
+ */
+export function configureAuth(
+  options: { accessToken: () => Promise<string | null>; onUnauthorized: () => void } | null,
+): void {
+  accessToken = options?.accessToken ?? null
+  onUnauthorized = options?.onUnauthorized ?? null
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!accessToken) return {}
+  try {
+    const token = await accessToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
+}
+
+/** A 401 means the session ended (expired, revoked): send the user to sign in. */
+function noteStatus(status: number): void {
+  if (status === 401) onUnauthorized?.()
+}
+
 function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
   return (
     typeof value === 'object' &&
@@ -101,7 +132,10 @@ export interface RequestOptions {
 async function send<T>(path: string, init: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(apiUrl(path), init)
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers: { ...((init.headers as Record<string, string>) ?? {}), ...(await authHeaders()) },
+    })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new ApiError({ message: 'The request was cancelled.', kind: 'aborted' })
@@ -113,6 +147,7 @@ async function send<T>(path: string, init: RequestInit): Promise<T> {
     })
   }
 
+  noteStatus(response.status)
   if (!response.ok) throw await toApiError(response)
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
@@ -142,11 +177,12 @@ export function postForm<T>(
     return send<T>(path, { method: 'POST', body: form, signal: options.signal })
   }
 
-  return new Promise<T>((resolve, reject) => {
+  return authHeaders().then((headers) => new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest()
     request.open('POST', apiUrl(path))
     request.responseType = 'text'
     request.setRequestHeader('Accept', 'application/json')
+    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value)
 
     const abort = () => request.abort()
     options.signal?.addEventListener('abort', abort, { once: true })
@@ -161,6 +197,7 @@ export function postForm<T>(
 
     request.onload = () => {
       finish()
+      noteStatus(request.status)
       let body: unknown = null
       try {
         body = JSON.parse(request.responseText)
@@ -216,7 +253,7 @@ export function postForm<T>(
     }
 
     request.send(form)
-  })
+  }))
 }
 
 /** Narrow an unknown caught value to a user-presentable message. */

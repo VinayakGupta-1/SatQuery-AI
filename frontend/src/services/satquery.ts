@@ -13,6 +13,7 @@
  *   GET  /api/tasks                                   listTasks()
  *   GET  /api/tasks/{task_id}  (alias /results/{id})  getTask()
  *   GET  /api/tasks/{task_id}/artifacts/{artifact_id} artifactUrl()
+ *   GET  /api/progress/{client_ref}                    progress()
  */
 
 import { get, postForm, type RequestOptions } from './http'
@@ -20,6 +21,7 @@ import { apiUrl } from './config'
 import type {
   CapabilitiesResponse,
   HealthResponse,
+  ProgressReport,
   TaskListEntry,
   TaskResponse,
   ToolSummary,
@@ -54,6 +56,8 @@ export interface AnalysisRequest {
   /** Where to fetch imagery when no files are sent: a place, `lat, lon`, or a
    *  `west, south, east, north` box. Overrides any place in the question. */
   location?: string | null
+  /** A random reference; `progress()` reports the run's stage under it. */
+  clientRef?: string | null
   /** Treat the uploads as bands of one scene rather than separate images. */
   asScene?: boolean
   /** Sensor name, e.g. `sentinel2`. Disambiguates numeric band names. */
@@ -68,6 +72,7 @@ function buildForm(request: AnalysisRequest, includeParameters: boolean): FormDa
   for (const file of request.files) form.append('files', file, file.name)
   form.append('as_scene', request.asScene ? 'true' : 'false')
   if (request.sensor?.trim()) form.append('sensor', request.sensor.trim())
+  if (request.clientRef) form.append('client_ref', request.clientRef)
   if (request.files.length === 0 && request.location?.trim()) {
     form.append('location', request.location.trim())
   }
@@ -108,6 +113,11 @@ export function listTasks(limit = 50, options?: RequestOptions): Promise<TaskLis
 
 export function getTask(taskId: string, options?: RequestOptions): Promise<TaskResponse> {
   return get<TaskResponse>(`/api/tasks/${encodeURIComponent(taskId)}`, options)
+}
+
+/** The stage a running analysis has reached, by the reference it was sent with. */
+export function progress(clientRef: string, options?: RequestOptions): Promise<ProgressReport> {
+  return get<ProgressReport>(`/api/progress/${encodeURIComponent(clientRef)}`, options)
 }
 
 /** Absolute URL for an artifact link returned on a task response. */

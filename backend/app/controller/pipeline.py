@@ -65,6 +65,10 @@ logger = get_logger("pipeline")
 #: request, returns the images and a report of how they were found.
 ImageryAcquirer = Callable[[TaskUnderstandingResult], tuple[list[ImageInput], AcquisitionReport]]
 
+#: Told ``(stage, status, detail)`` as each stage finishes, so a caller can
+#: show real progress while a long run -- a fetch, above all -- is under way.
+StageListener = Callable[[str, str, str], None]
+
 
 class PipelineRun(BaseModel):
     """Everything the pipeline produced, stage by stage.
@@ -262,6 +266,7 @@ class SatQueryPipeline:
         user_parameters: dict[str, Any] | None = None,
         execute: bool = True,
         acquire: ImageryAcquirer | None = None,
+        on_stage: StageListener | None = None,
     ) -> PipelineRun:
         """Run every stage in order and return the complete record.
 
@@ -275,7 +280,7 @@ class SatQueryPipeline:
         scenes -- and then validated exactly like an upload.
         """
         task_id = task_id or f"task_{uuid.uuid4().hex[:12]}"
-        trace = _Tracer()
+        trace = _Tracer(on_stage)
 
         # Stages 1-4: interpret the request. The agent proposes; the guard
         # has already stripped anything the registry does not sanction.
@@ -294,6 +299,8 @@ class SatQueryPipeline:
         # downloading a scene would only delay the clarifying question.
         acquisition: AcquisitionReport | None = None
         if not images and acquire is not None and understanding.task_type:
+            if on_stage is not None:
+                on_stage("acquisition", "running", "Finding the place and fetching imagery")
             images, acquisition = acquire(understanding)
             trace.record("acquisition", acquisition.status, acquisition.message)
 
@@ -462,8 +469,9 @@ class SatQueryPipeline:
 class _Tracer:
     """Times each stage from the end of the one before it."""
 
-    def __init__(self) -> None:
+    def __init__(self, listener: StageListener | None = None) -> None:
         self.events: list[TraceEvent] = []
+        self._listener = listener
         self._since = time.perf_counter()
 
     def record(
@@ -484,6 +492,11 @@ class _Tracer:
             )
         )
         self._since = now
+        if self._listener is not None:
+            try:
+                self._listener(stage, status, detail)
+            except Exception:  # a progress display must never break a run
+                pass
 
 
 def _describe_context(understanding: TaskUnderstandingResult) -> str:
@@ -534,4 +547,4 @@ def final_status(validation, selection, configuration, execution) -> str:
     return "execution_error"
 
 
-__all__ = ["PipelineRun", "SatQueryPipeline", "final_status"]
+__all__ = ["ImageryAcquirer", "PipelineRun", "SatQueryPipeline", "StageListener", "final_status"]

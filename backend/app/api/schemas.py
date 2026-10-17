@@ -243,6 +243,18 @@ class BackendInfo(BaseModel):
     supports_compressed_geotiff: bool
 
 
+class AuthInfo(BaseModel):
+    """How the workspace signs users in. Every value here is public by design:
+    the project URL and publishable key identify the project, and row level
+    security decides what a key can do."""
+
+    provider: str = "supabase"
+    url: str
+    publishable_key: str
+    #: New accounts must confirm their email address before they can sign in.
+    email_verification: bool = True
+
+
 class CapabilitiesResponse(BaseModel):
     """Everything SatQuery can currently do, straight from the registry.
 
@@ -273,6 +285,8 @@ class CapabilitiesResponse(BaseModel):
     #: True when a request may arrive without imagery: SatQuery then fetches
     #: Sentinel-2 or Sentinel-1 scenes for the place the question names.
     auto_fetch: bool = False
+    #: Present when users must sign in; ``None`` when the API is open.
+    auth: AuthInfo | None = None
     backend: "BackendInfo"
 
 
