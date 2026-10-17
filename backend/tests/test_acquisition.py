@@ -17,8 +17,8 @@ import numpy
 import pytest
 from fastapi.testclient import TestClient
 
-from app.acquisition import catalog, location, reader, service
-from app.acquisition.catalog import SENTINEL1, SENTINEL2, Acquisition, Item
+from app.acquisition import catalog, location, reader
+from app.acquisition.catalog import SENTINEL1, SENTINEL2, Acquisition
 from app.acquisition.location import (
     best_match,
     extent_km,
@@ -322,6 +322,13 @@ def test_items_missing_a_band_are_dropped():
     broken = feature("x", "2026-01-01")
     del broken["assets"]["B08"]
     assert catalog._item(broken, SENTINEL2) is None
+
+
+@pytest.mark.parametrize("href", ["/etc/passwd", "file:///C:/secrets.tif", "http://example.test/B08.tif"])
+def test_only_https_assets_are_ever_read(href):
+    item = feature("x", "2026-01-01")
+    item["assets"]["B08"]["href"] = href
+    assert catalog._item(item, SENTINEL2) is None
 
 
 def test_search_asks_for_the_cloud_limit_only_on_optical(fetch_settings, network):

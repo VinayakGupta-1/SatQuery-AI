@@ -90,7 +90,14 @@ def create_app() -> FastAPI:
     verify_bindings()
     # Create the storage roots now so the first upload is not the thing that
     # discovers the directory is unwritable.
-    get_artifact_store()
+    store = get_artifact_store()
+    # Tasks from an earlier process can never be served again; their uploads,
+    # fetched scenes and outputs would otherwise accumulate without limit.
+    purged = (
+        store.purge_older_than(settings.retention_hours * 3600)
+        if settings.retention_hours > 0
+        else 0
+    )
 
     app = FastAPI(
         title="SatQuery AI",
@@ -122,6 +129,8 @@ def create_app() -> FastAPI:
             "executable_tools": len(implemented_tool_ids()),
             "agent_provider": settings.resolved_agent_provider,
             "raster_backend": backend_report()["raster_backend"],
+            "auto_fetch": settings.fetch_enabled,
+            "purged_tasks": purged,
         },
     )
     return app

@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from app.acquisition import acquire as acquire_imagery
 from app.api.ingestion import (
     IngestionError,
+    safe_filename,
     assemble_scene,
     describe_upload,
     store_upload,
@@ -42,6 +43,15 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 pipeline = SatQueryPipeline()
 
+#: Longest question accepted. A question is a sentence; anything far longer is
+#: a paste error or abuse, and the text may be forwarded to a hosted model.
+MAX_QUERY_CHARS = 2000
+#: Longest location accepted. It may be forwarded to the geocoder.
+MAX_LOCATION_CHARS = 200
+#: Uploads are read in pieces of this size, so an oversized file is refused as
+#: soon as it crosses the limit rather than after it is entirely in memory.
+UPLOAD_CHUNK_BYTES = 1024 * 1024
+
 #: Content types for the files tools write. Anything else is served as bytes.
 ARTIFACT_MEDIA_TYPES = {
     ".tif": "image/tiff",
@@ -61,6 +71,35 @@ def _parse_parameters(raw: str | None) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise HTTPException(400, "'parameters' must be a JSON object.")
     return parsed
+
+
+def _check_query(query: str | None) -> str:
+    """The trimmed question, or a 400 explaining what is wrong with it."""
+    if not query or not query.strip():
+        raise HTTPException(400, "A query is required.")
+    query = query.strip()
+    if len(query) > MAX_QUERY_CHARS:
+        raise HTTPException(
+            400, f"The question is {len(query):,} characters; at most {MAX_QUERY_CHARS:,} are accepted."
+        )
+    return query
+
+
+async def _read_limited(upload: UploadFile, limit: int) -> bytes:
+    """Read an upload, refusing it as soon as it exceeds ``limit`` bytes."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await upload.read(UPLOAD_CHUNK_BYTES)
+        if not chunk:
+            return b"".join(chunks)
+        total += len(chunk)
+        if total > limit:
+            raise IngestionError(
+                f"'{safe_filename(upload.filename)}' is larger than the "
+                f"{limit:,} byte limit."
+            )
+        chunks.append(chunk)
 
 
 async def _ingest(
@@ -106,7 +145,7 @@ async def _ingest_files(
     stored: list[tuple[str, str]] = []
     for upload in files:
         try:
-            content = await upload.read()
+            content = await _read_limited(upload, settings.max_upload_bytes)
             stored.append(
                 store_upload(content, upload.filename, task_id, settings)
             )
@@ -206,8 +245,11 @@ async def create_task(
     answer is "no", not a transport-level failure. The same holds when no
     imagery was sent and none could be fetched -- the answer says why.
     """
-    if not query or not query.strip():
-        raise HTTPException(400, "A query is required.")
+    query = _check_query(query)
+    if location is not None and len(location.strip()) > MAX_LOCATION_CHARS:
+        raise HTTPException(
+            400, f"The location is longer than {MAX_LOCATION_CHARS} characters."
+        )
 
     settings = get_settings()
     files = [upload for upload in files or [] if upload.filename]
@@ -232,7 +274,7 @@ async def create_task(
     # and the server must keep answering other requests meanwhile.
     run = await run_in_threadpool(
         pipeline.run,
-        query=query.strip(),
+        query=query,
         images=images,
         task_id=task_id,
         output_directory=get_artifact_store().output_directory(task_id),
@@ -257,7 +299,7 @@ async def create_task(
 @router.post("/validate", response_model=ValidationResponse)
 async def validate_task(
     query: str = Form(...),
-    files: list[UploadFile] = File(...),
+    files: list[UploadFile] | None = File(None),
     as_scene: bool = Form(False),
     sensor: str | None = Form(None),
 ) -> ValidationResponse:
@@ -266,8 +308,16 @@ async def validate_task(
     Useful for a frontend that wants to tell the user their upload is wrong
     before committing to a long computation.
     """
-    if not query or not query.strip():
-        raise HTTPException(400, "A query is required.")
+    query = _check_query(query)
+    files = [upload for upload in files or [] if upload.filename]
+    if not files:
+        # A dry run must not download anything; fetched imagery is checked by
+        # the same validator when the analysis itself runs.
+        raise HTTPException(
+            400,
+            "Checking needs attached imagery. Without an attachment, ask the "
+            "question directly: SatQuery fetches a scene and validates it then.",
+        )
 
     task_id = f"check_{uuid.uuid4().hex[:12]}"
     images, summaries = await _ingest(files, task_id, as_scene, sensor)
@@ -278,7 +328,7 @@ async def validate_task(
     # to them later, so they are removed rather than left to accumulate.
     try:
         run = pipeline.run(
-            query=query.strip(), images=images, task_id=task_id, execute=False
+            query=query, images=images, task_id=task_id, execute=False
         )
         return build_validation_response(run, summaries)
     finally:

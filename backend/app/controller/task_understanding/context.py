@@ -248,7 +248,7 @@ def extract_aoi(query: str) -> AreaOfInterest | None:
 def _named_region(query: str) -> AreaOfInterest | None:
     match = REGION_PATTERN.search(query)
     if match:
-        first, second, part = match.group(1).lower(), (match.group(2) or "").lower(), match.group(3).lower()
+        first, second = match.group(1).lower(), (match.group(2) or "").lower()
         if second and first in {"north", "south"}:
             return AreaOfInterest(region=f"{first}_{second}", text=match.group(0))
         if not second:

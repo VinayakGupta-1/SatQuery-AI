@@ -159,7 +159,6 @@ def _open_single_raster(
 
 
 def _open_with_rasterio(path: str, band_names: list[str] | None) -> RasterDataset:
-    import numpy
     import rasterio
 
     with rasterio.open(path) as source:
@@ -197,7 +196,6 @@ def _open_with_rasterio(path: str, band_names: list[str] | None) -> RasterDatase
         )
         metadata: dict[str, Any] = dict(source.tags() or {})
 
-    numpy  # imported to guarantee array support is present alongside rasterio
     return RasterDataset(
         width=bands[0].width,
         height=bands[0].height,

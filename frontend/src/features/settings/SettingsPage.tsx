@@ -90,6 +90,28 @@ export function SettingsPage() {
                 <Tag tone="neutral">Offline rules</Tag>
               )}
             </Definition>
+            <Definition term="Vision model">
+              {capabilities.vlm_provider ? (
+                <>
+                  <span className="sq-mono">{capabilities.vlm_provider}</span>
+                  <Tag tone={capabilities.vlm_local ? 'success' : 'info'}>
+                    {capabilities.vlm_local ? 'On this machine' : 'Hosted'}
+                  </Tag>
+                </>
+              ) : (
+                <Tag tone="neutral">Switched off</Tag>
+              )}
+            </Definition>
+            <Definition term="Automatic imagery">
+              {capabilities.auto_fetch ? (
+                <>
+                  Sentinel-2 / Sentinel-1 via Planetary Computer{' '}
+                  <Tag tone="info">On</Tag>
+                </>
+              ) : (
+                <Tag tone="neutral">Off - attach imagery</Tag>
+              )}
+            </Definition>
             <Definition term="Upload limits">
               {formatBytes(capabilities.max_upload_bytes)} per file ·{' '}
               {capabilities.max_images_per_task} images per analysis

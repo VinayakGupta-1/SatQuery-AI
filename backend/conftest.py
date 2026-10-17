@@ -16,10 +16,14 @@ the environment can still be controlled:
 * Automatic imagery fetching is off, so a request without files can never
   reach Planetary Computer or the geocoder. Acquisition tests turn it on and
   replace the network functions themselves.
+* Storage points at a throwaway directory. Importing ``app.main`` builds the
+  app, and building it purges old task files from the storage root -- which,
+  left at its default, is the developer's real one.
 """
 
 import os
 import sys
+import tempfile
 
 BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,3 +35,4 @@ for _name in list(os.environ):
     if _name.startswith(("SATQUERY_AGENT_", "SATQUERY_VQA_", "SATQUERY_FETCH_", "SATQUERY_GEOCODER_")):
         del os.environ[_name]
 os.environ["SATQUERY_FETCH_ENABLED"] = "0"
+os.environ["SATQUERY_STORAGE_ROOT"] = tempfile.mkdtemp(prefix="satquery-tests-")

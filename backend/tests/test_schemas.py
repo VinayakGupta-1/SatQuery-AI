@@ -1,10 +1,8 @@
 from datetime import date
 
-from pydantic import ValidationError
 
 from app.schemas.inputs import ImageInput, ImageMetadata
 from app.schemas.task import (
-    InputReference,
     InputRequirements,
     SatQueryTask,
     TaskType,

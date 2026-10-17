@@ -91,6 +91,10 @@ class Settings:
     max_images_per_task: int = field(
         default_factory=lambda: _env_int("MAX_IMAGES_PER_TASK", 8)
     )
+    #: At startup, task files older than this are deleted: the task list lives
+    #: in memory, so nothing from an earlier process can be served again. 0
+    #: keeps everything.
+    retention_hours: int = field(default_factory=lambda: _env_int("RETENTION_HOURS", 24))
     allowed_extensions: tuple[str, ...] = DEFAULT_ALLOWED_EXTENSIONS
 
     #: Browser origins permitted to call the API. The default suits a local

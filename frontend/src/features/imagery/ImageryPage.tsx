@@ -36,6 +36,15 @@ export function ImageryPage() {
         ) : null}
       </header>
 
+      {capabilities?.auto_fetch && usable.length === 0 ? (
+        <Notice tone="success" title="Staging is optional">
+          With nothing staged, SatQuery fetches Sentinel-2 or Sentinel-1 imagery
+          for the place your question names. Stage your own rasters here only
+          when you want them analysed instead.{' '}
+          <Link to="/">Ask a question</Link>
+        </Notice>
+      ) : null}
+
       <Panel title="Staged rasters">
         <UploadDropzone />
       </Panel>

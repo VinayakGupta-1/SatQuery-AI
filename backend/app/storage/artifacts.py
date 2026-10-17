@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import time
 import uuid
 from abc import ABC, abstractmethod
 
@@ -58,6 +59,10 @@ class ArtifactStore(ABC):
     @abstractmethod
     def delete_task(self, task_id: str) -> None:
         """Remove everything stored for one task."""
+
+    @abstractmethod
+    def purge_older_than(self, seconds: float) -> int:
+        """Remove every task not modified for ``seconds``; return how many."""
 
 
 class LocalArtifactStore(ArtifactStore):
@@ -160,6 +165,42 @@ class LocalArtifactStore(ArtifactStore):
             path = os.path.join(self.root, kind, self._segment(task_id))
             if os.path.isdir(path):
                 shutil.rmtree(path, ignore_errors=True)
+
+    def purge_older_than(self, seconds: float) -> int:
+        """Remove task directories nothing has written to for ``seconds``.
+
+        Task records live in memory, so after a restart no earlier task can be
+        served again -- its uploads, fetched scenes and outputs are dead
+        weight, and fetched imagery alone is about 10 MB a question. Only
+        directories named like task ids are touched; anything else an operator
+        put under the storage root is left alone.
+        """
+        cutoff = time.time() - seconds
+        removed: set[str] = set()
+        for kind in ("uploads", "outputs"):
+            parent = os.path.join(self.root, kind)
+            if not os.path.isdir(parent):
+                continue
+            for name in os.listdir(parent):
+                path = os.path.join(parent, name)
+                if not SAFE_SEGMENT.match(name) or not os.path.isdir(path):
+                    continue
+                if _last_modified(path) < cutoff:
+                    shutil.rmtree(path, ignore_errors=True)
+                    removed.add(name)
+        return len(removed)
+
+
+def _last_modified(directory: str) -> float:
+    """The newest modification time of a directory or anything inside it."""
+    newest = os.path.getmtime(directory)
+    for parent, _, names in os.walk(directory):
+        for name in names:
+            try:
+                newest = max(newest, os.path.getmtime(os.path.join(parent, name)))
+            except OSError:
+                continue
+    return newest
 
 
 _store: ArtifactStore | None = None

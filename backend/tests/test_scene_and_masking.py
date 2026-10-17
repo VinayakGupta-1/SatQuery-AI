@@ -8,7 +8,6 @@ must be honoured before any statistic means anything.
 from __future__ import annotations
 
 import math
-import os
 
 import pytest
 

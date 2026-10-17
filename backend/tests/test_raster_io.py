@@ -14,7 +14,7 @@ from app.tools.raster.model import (
     RasterError,
     UnsupportedRasterError,
 )
-from tests.conftest import SENTINEL2_GEOREFERENCE, make_band
+from tests.conftest import make_band
 
 
 # ============================================================

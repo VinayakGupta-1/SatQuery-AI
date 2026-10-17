@@ -374,7 +374,8 @@ def test_oversized_upload_is_rejected(client, scene_bytes, monkeypatch):
     )
 
     assert response.status_code == 400
-    assert "over the" in response.json()["detail"]
+    # Refused while reading, before the whole file is in memory.
+    assert "larger than the 10 byte limit" in response.json()["detail"]
 
 
 # ============================================================

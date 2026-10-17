@@ -56,6 +56,13 @@ COUNT_PATTERN = re.compile(
 
 FLOOD_PHRASES = ("flood", "inundat", "waterlogg", "water-logg", "submerged")
 
+#: "Is there a river near Varanasi?", "Are there ships in this image?",
+#: "Does the scene show a dam?" -- a question answered by looking.
+YES_NO_PATTERN = re.compile(
+    r"^\s*(?:is|are|was|were)\s+(?:there|this|that|these|the|it|any)\b|"
+    r"^\s*(?:does|do|can|could)\s+(?:the|this|it|you|these)\b"
+)
+
 #: An explicit request for a description of the whole image.
 CAPTION_PATTERN = re.compile(
     r"\bcaption\b|\bdescribe\s+(?:this|the)\s+(?:image|scene|picture|area)\b|"
@@ -185,6 +192,11 @@ class TaskUnderstanding:
         for task, phrases in TASK_PHRASES:
             if any(phrase in query for phrase in phrases):
                 return task
+        # Last: a yes/no question about what is in the scene is for the vision
+        # model, as the hosted reader's prompt also says. Every specific
+        # phrase above wins over it.
+        if YES_NO_PATTERN.search(query):
+            return "image_analysis"
         return None
 
     @staticmethod

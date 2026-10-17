@@ -190,7 +190,13 @@ def _epsg(properties: dict[str, Any]) -> int | None:
 def _item(feature: dict[str, Any], collection: Collection) -> Item | None:
     properties = feature.get("properties") or {}
     assets = feature.get("assets") or {}
-    hrefs = {key: assets[key]["href"] for key, _ in collection.bands if key in assets}
+    # GDAL opens whatever it is given -- a local path, file://, another
+    # protocol -- so only https URLs from the catalogue are ever read.
+    hrefs = {
+        key: assets[key]["href"]
+        for key, _ in collection.bands
+        if key in assets and str(assets[key].get("href", "")).startswith("https://")
+    }
     if len(hrefs) != len(collection.bands) or not properties.get("datetime"):
         return None
     cloud = properties.get("eo:cloud_cover")

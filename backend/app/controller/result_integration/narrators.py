@@ -16,7 +16,7 @@ from typing import Any
 
 from app.schemas.results import Evidence, Finding
 from app.tools.raster.locate import sector
-from app.tools.raster.model import GEOGRAPHIC_EPSG_RANGE, is_projected_crs
+from app.tools.raster.model import is_projected_crs
 
 
 # ============================================================

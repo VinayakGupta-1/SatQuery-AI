@@ -479,6 +479,11 @@
   overflow-wrap: anywhere;
 }
 
+/* A tag after a value ("rasterio", then "Compressed GeoTIFF") needs air. */
+.sq-defs dd > .sq-tag:not(:first-child) {
+  margin-left: var(--sq-2);
+}
+
 @media (max-width: 560px) {
   .sq-defs {
     grid-template-columns: 1fr;

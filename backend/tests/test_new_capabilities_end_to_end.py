@@ -273,6 +273,8 @@ def test_a_dry_run_reports_a_refusal_it_can_see_in_advance(pipeline, optical, tm
 
 
 def test_a_question_says_when_vqa_is_switched_off():
+    # The rules read a yes/no question as one for the vision model; with that
+    # model off, the plan says so instead of running anything.
     plan = RuleBasedProvider().understand("Is there a river in this image?")
-    assert plan.task is None
+    assert plan.task == "image_analysis"
     assert "switched off" in plan.clarification

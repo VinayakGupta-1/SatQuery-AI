@@ -227,18 +227,20 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 633 tests
+python -m pytest                                   # 694 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```
 
 The suite runs twice: once with rasterio/GDAL and once on the dependency-free
 GeoTIFF codec, to prove the two raster backends agree. It never reads
-`backend/.env` and never calls a hosted model.
+`backend/.env`, never calls a hosted model and never fetches imagery: the
+acquisition tests replace the catalogue, geocoder and remote reader with fakes.
 
 ```bash
 cd frontend
-npm run lint && npm run build
+npm test                          # Vitest: formatting, suggestions, request bodies
+npm run lint && npm run build     # ESLint, then tsc -b and the production build
 ```
 
 ## Layout

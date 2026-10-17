@@ -242,7 +242,8 @@ processing system.
 ### 5.2 Responsibilities
 
 * Query submission
-* Image / file uploads
+* Image / file uploads — or, when none are attached, automatic imagery
+  acquisition (§5.4)
 * Request validation
 * Agent invocation
 * Workflow execution
@@ -251,17 +252,40 @@ processing system.
 
 ### 5.3 Example Request
 
-```http
-POST /analyze
-Content-Type: application/json
+The request is a multipart form, because imagery travels with the question:
 
-{
-    "query": "Find areas affected by flooding",
-    "inputs": [...]
-}
+```http
+POST /api/tasks            (alias: POST /analyze)
+Content-Type: multipart/form-data
+
+query     = "Find areas affected by flooding near Kochi in August 2024"
+files     = <zero or more GeoTIFF / JPEG 2000 rasters>
+location  = <optional: a place, "lat, lon", or "west, south, east, north">
+as_scene  = false          (true: the files are bands of one scene)
+parameters= <optional JSON object of explicit tool parameters>
 ```
 
-The backend passes the request to the Agentic Controller.
+The backend passes the request to the Agentic Controller. `POST /api/tasks/validate`
+runs every stage except the tool itself, and needs attached imagery.
+
+### 5.4 Automatic Imagery Acquisition
+
+With no files attached, imagery is fetched once the question is understood
+(`app/acquisition/`):
+
+| Step | What happens |
+|---|---|
+| Where | The location field, else coordinates or a bounding box in the question, else the first place name, geocoded with OpenStreetMap Nominatim (area features preferred over points). Areas over 20 km are cut to 20 km around the centre. |
+| What and when | The understood task fixes the sensor and scene count: Sentinel-2 L2A for optical tasks, Sentinel-1 RTC for floods (radar sees through cloud), a seasonally matched before/after pair for change, an optical scene plus the nearest radar pass within 12 days for fusion. The question's dates fix the search windows. |
+| Which scene | Microsoft Planetary Computer's STAC catalogue is searched; passes are ranked by coverage, cloud and recency; the leading optical candidates are re-checked on their own SCL band over the area itself; adjacent tiles of one pass are mosaicked. |
+| Download | Only the area's pixels, and only the bands the task reads, from cloud-optimised GeoTIFFs onto one grid shared by every scene of the question, using overviews (20/40/80 m) for large areas. |
+| Write | The Sentinel-2 +1000 reflectance offset (baseline ≥ 04.00) is removed and each scene is written as a self-describing GeoTIFF. |
+
+The fetched files then pass the same adaptation and validation as an upload.
+A question naming no place, or a place and period with no usable scene, is
+answered with exactly that and what to change. Every result carries an
+acquisition report: resolved place, each scene's date, platform and cloud over
+the area, catalogue item ids, and every adjustment made.
 
 ---
 
@@ -716,6 +740,21 @@ Reasoning  ≠  Validation  ≠  Execution
 
 This makes the architecture easier to test and maintain.
 
+### 13.5 External Services, Limits and Retention
+
+* **What leaves the machine.** The question's text, when a hosted model reads
+  it; a rendered preview, only when an operator enables the hosted vision
+  model; a place name to OpenStreetMap and an area and dates to Planetary
+  Computer, only when imagery is fetched (`SATQUERY_FETCH_ENABLED=false` turns
+  that off). API keys are sent only to the endpoint they were issued for.
+* **Request limits.** Questions are capped at 2,000 characters and locations
+  at 200; an upload is refused as soon as it crosses the size limit, before it
+  is entirely in memory.
+* **Retention.** Task records live in memory (the last 200). A task pushed out
+  of that list has its files deleted, and task files older than
+  `SATQUERY_RETENTION_HOURS` (default 24) are purged at startup, because
+  nothing from an earlier process can be served again.
+
 ---
 
 ## 14. Backend Project Structure
@@ -759,7 +798,9 @@ backend/
 │   │                                AOI clipping, CRS transforms, previews
 │   ├── evaluation/              benchmark loading and scoring (RSVQA,
 │   │                            VRSBench, CDVQA) behind confidence scoring
-│   ├── storage/                 upload and artifact storage
+│   ├── acquisition/             automatic imagery: geocoding, STAC search,
+│   │                            scene ranking, windowed COG download
+│   ├── storage/                 upload and artifact storage, retention
 │   └── api/                     routes, ingestion, response shaping
 │
 ├── scripts/make_demo_rasters.py
@@ -804,6 +845,16 @@ User Query  →  API  →  Agentic Controller  →  Validation
 
 The goal is to ensure the system behaves correctly as a complete application, not merely
 that isolated unit tests pass.
+
+### 15.4 What Runs Today
+
+* **Backend:** pytest, run twice — once with rasterio (GDAL) and once with
+  `SATQUERY_RASTER_BACKEND=builtin` — so both raster backends are proven to
+  agree. The suite is hermetic: `.env` is never read, hosted-model settings
+  are dropped, and automatic fetching is off; acquisition tests replace the
+  network with fakes and write and read back real GeoTIFFs.
+* **Frontend:** Vitest (`npm test`) for formatting, suggestion selection and
+  request construction; `tsc -b` and ESLint on every build.
 
 ---
 
