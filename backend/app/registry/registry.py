@@ -285,11 +285,14 @@ TOOLS: list[ToolDefinition] = [
         tool_id="sar_analysis", name="SAR Water and Flood Mapping",
         version="1.0.0", output_type=OutputType.CLASSES,
         description=(
-            "Maps open water and flooding in SAR imagery by thresholding calibrated "
-            "backscatter in decibels. Works through cloud and at night."
+            "Maps open water in SAR imagery by thresholding calibrated backscatter in "
+            "decibels; given a dry-season reference too, maps flooding as new water, "
+            "leaving rivers, lakes and sea out. Works through cloud and at night."
         ),
         tool_type=ToolType.SAR_ANALYSIS, supported_modalities=["sar"],
-        min_images=1, max_images=1,
+        # Two scenes are a dry-season reference and a flood-period scene:
+        # flooding is then new water, and permanent water is not counted.
+        min_images=1, max_images=2,
         parameters={
             **SAR_PARAMETERS,
             "write_raster": "bool",

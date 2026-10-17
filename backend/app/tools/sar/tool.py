@@ -32,6 +32,7 @@ from app.tools.raster.aoi import footprint_lonlat, open_for_analysis
 from app.tools.raster.io import backend_report
 from app.tools.raster.locate import class_locations
 from app.tools.raster.render import write_preview
+from app.tools.sar.flood import execute_flood
 from app.tools.sar.backscatter import (
     CLASS_LABELS,
     DEFAULT_WATER_THRESHOLD_DB,
@@ -114,6 +115,17 @@ class SARAnalysisTool(RemoteSensingTool):
 
     def execute(self, request: ToolRequest) -> ToolOutput:
         self.preflight(request)
+        if len(request.input_references) == 2:
+            # A dry-season reference and a flood-period scene: flooding is
+            # mapped as new water, so permanent water is not counted.
+            return execute_flood(
+                self.tool_id,
+                request,
+                calibration_options(request.parameters),
+                lambda decibels, valid, polarisation: water_threshold(
+                    decibels, valid, polarisation, request.parameters
+                ),
+            )
         path = self.require_single_input(request)
         parameters = request.parameters
         log = StepLog()

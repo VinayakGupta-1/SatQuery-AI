@@ -32,8 +32,15 @@ export function ClassesResult({ result }: { result: TaskResponse }) {
   // Fusion labels water by which sensor saw it; it has no single water class.
   const fusion = data.method === 'optical_sar_water_fusion'
 
+  // A flood map is read for the new water, with permanent water beside it.
+  const flood = data.method === 'sar_flood_change'
+  const flooded = flood ? classes.flooded : undefined
+  const permanent = flood ? classes.permanent_water : undefined
+  const floodedArea = formatArea(flooded?.area_square_units, crs)
+  const permanentArea = formatArea(permanent?.area_square_units, crs)
+
   // A water map is read for its water, not for whichever class is largest.
-  const water = data.polarisation && !fusion ? classes.water : undefined
+  const water = data.polarisation && !fusion && !flood ? classes.water : undefined
   const waterArea = formatArea(water?.area_square_units, crs)
 
   return (
@@ -55,6 +62,37 @@ export function ClassesResult({ result }: { result: TaskResponse }) {
       <StatGrid>
         {fusion ? (
           <FusionStats result={result} />
+        ) : flood && flooded ? (
+          <>
+            <Stat
+              label="Flooded (new water)"
+              value={
+                flooded.area_square_units != null ? floodedArea.value : formatPercent(flooded.fraction)
+              }
+              unit={flooded.area_square_units != null ? floodedArea.unit : undefined}
+              accent
+              note={`${formatPercent(flooded.fraction)} of the observed area`}
+            />
+            <Stat
+              label="Permanent water, not counted"
+              value={
+                permanent?.area_square_units != null
+                  ? permanentArea.value
+                  : formatPercent(permanent?.fraction ?? 0)
+              }
+              unit={permanent?.area_square_units != null ? permanentArea.unit : undefined}
+              note="rivers, lakes and sea, wet on both dates"
+            />
+            <Stat
+              label="Compared"
+              value={data.event_date ? formatDate(String(data.event_date)) : '--'}
+              note={
+                data.reference_date
+                  ? `against the dry-season scene of ${formatDate(String(data.reference_date))}`
+                  : undefined
+              }
+            />
+          </>
         ) : water ? (
           <>
             <Stat

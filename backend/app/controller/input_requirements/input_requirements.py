@@ -57,6 +57,9 @@ class InputRequirements(BaseModel):
     time_range: Optional[TimeRange] = None
     #: The area the question names; it must overlap the imagery.
     aoi: Optional[AreaOfInterest] = None
+    #: Only the latest image must fall in ``time_range``: a flood pair's
+    #: dry-season reference predates the period on purpose.
+    period_applies_to_latest_only: bool = False
 
 
 class InputRequirementsResolver:
@@ -138,7 +141,9 @@ class InputRequirementsResolver:
 
     @staticmethod
     def _sar_analysis_requirements() -> InputRequirements:
-        return InputRequirements(task_category="sar_analysis", required_inputs=["sar_image"], minimum_image_count=1, required_modalities=["sar"], requires_metadata=True, requires_crs=True, compatibility_requirements=["image must be calibrated SAR backscatter"])
+        # One scene maps water; a dry-season reference plus a flood-period scene
+        # maps flooding as new water, so the reference may predate the period.
+        return InputRequirements(task_category="sar_analysis", required_inputs=["sar_image"], minimum_image_count=1, required_modalities=["sar"], requires_metadata=True, requires_crs=True, compatibility_requirements=["image must be calibrated SAR backscatter"], period_applies_to_latest_only=True)
 
     @staticmethod
     def _fusion_requirements() -> InputRequirements:

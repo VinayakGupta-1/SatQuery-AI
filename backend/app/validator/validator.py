@@ -189,7 +189,12 @@ def validate_inputs(
     # 11. The period the question names
     if requirements.time_range is not None:
         period = requirements.time_range
-        for image in images:
+        checked = images
+        dated = [image for image in images if image.metadata and image.metadata.acquisition_date]
+        if requirements.period_applies_to_latest_only and len(images) > 1 and len(dated) == len(images):
+            # A reference scene is compared against, not asked about.
+            checked = [max(dated, key=lambda image: image.metadata.acquisition_date)]
+        for image in checked:
             acquired = image.metadata.acquisition_date if image.metadata else None
             if acquired is None:
                 warnings.append(

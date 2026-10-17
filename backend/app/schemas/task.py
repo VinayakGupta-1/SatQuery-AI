@@ -65,6 +65,10 @@ class InputRequirements(BaseModel):
     max_days_between_images: int | None = None
     #: The period the question names; acquisition dates must fall inside it.
     time_range: TimeRange | None = None
+    #: Only the latest image must fall inside ``time_range``. A flood map
+    #: compares the flood-period scene with a dry-season reference that by
+    #: design predates the period asked about.
+    period_applies_to_latest_only: bool = False
     #: The area the question names; it must overlap every image.
     aoi: AreaOfInterest | None = None
 

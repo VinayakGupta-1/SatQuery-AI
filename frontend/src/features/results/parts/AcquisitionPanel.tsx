@@ -14,6 +14,8 @@ const ROLE_LABEL: Record<string, string> = {
   after: 'After',
   optical: 'Optical',
   sar: 'Radar',
+  reference: 'Dry-season reference',
+  event: 'Flood period',
 }
 
 const COLLECTION_LABEL: Record<string, string> = {

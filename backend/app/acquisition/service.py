@@ -382,6 +382,11 @@ def _write(
 # ============================================================
 # ENTRY POINT
 # ============================================================
+def _track(item: Item) -> tuple[Any, Any]:
+    """``(relative orbit, direction)`` of a radar pass."""
+    return item.properties.get("sat:relative_orbit"), item.properties.get("sat:orbit_state")
+
+
 def _select(
     plan: AcquisitionPlan,
     area: ResolvedArea,
@@ -420,6 +425,23 @@ def _select(
             (optical_request, chosen_optical),
             (sar_request, _Choice(partners[id(chosen_optical.acquisition)])),
         ]
+
+    if plan.kind == "flood":
+        reference_request, event_request = plan.requests
+        event_ranked = rank(_candidates(event_request, area, settings))
+        if not event_ranked:
+            raise _unavailable(event_request, area, settings)
+        event = _choose(event_ranked, grid, settings)
+        pool = _candidates(reference_request, area, settings)
+        # The same orbit track sees the ground from the same angle, so
+        # terrain and buildings scatter alike on both dates and only water
+        # differs.
+        track = _track(event.acquisition.first)
+        same_track = [a for a in pool if _track(a.first) == track and track != (None, None)]
+        reference_ranked = rank(same_track or pool)
+        if not reference_ranked:
+            raise _unavailable(reference_request, area, settings)
+        return [(reference_request, _Choice(reference_ranked[0])), (event_request, event)]
 
     if plan.kind == "change":
         before_request, after_request = plan.requests

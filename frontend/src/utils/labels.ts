@@ -33,6 +33,11 @@ const CLASS_LABELS: Record<string, string> = {
   non_built_up: 'Not built-up',
   possible_built_up: 'Possible built-up',
   built_up: 'Built-up',
+  // Flood mapping against a dry-season reference
+  flooded: 'Flooded (new water)',
+  permanent_water: 'Permanent water',
+  receded_water: 'Receded water',
+  dry_land: 'Dry land',
   // Change detection
   increase: 'Increase',
   stable: 'Stable',
@@ -112,6 +117,11 @@ const CLASS_COLOURS: Record<string, string> = {
   non_built_up: '#5c6a7a',
   possible_built_up: '#c9a45c',
   built_up: '#b8763f',
+  // A flood stands out against permanent water, which is deliberately deep.
+  flooded: '#4fc3f7',
+  permanent_water: '#244e7a',
+  receded_water: '#c9a45c',
+  dry_land: '#4a5666',
   increase: '#56b98d',
   stable: '#4a5666',
   decrease: '#d97a6d',

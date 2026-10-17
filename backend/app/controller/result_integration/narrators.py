@@ -490,6 +490,63 @@ class LandCoverNarrator(ResultNarrator):
         return evidence + _coverage_evidence(output.get("statistics") or {}, "classified")
 
 
+class SARFloodNarrator(ResultNarrator):
+    """Narrates a flood map: new water against a dry-season reference."""
+
+    result_type = "sar_flood_map"
+
+    def findings(self, output: dict[str, Any]) -> list[Finding]:
+        return class_findings(
+            output,
+            skip=("dry_land",),
+            names={
+                "flooded": "Flooded (new water)",
+                "permanent_water": "Permanent water, not counted as flood",
+                "receded_water": "Water in the reference, dry now",
+            },
+            min_fraction=0.0,
+        )
+
+    def answer(self, output: dict[str, Any]) -> str:
+        data = output.get("data") or {}
+        statistics = output.get("statistics") or {}
+        classes = data.get("classes") or {}
+        crs = _crs_of(output)
+        if not statistics.get("valid_pixels"):
+            return "No flooding could be mapped: no pixel was observed on both dates."
+
+        flooded = classes.get("flooded") or {}
+        permanent = classes.get("permanent_water") or {}
+        receded = classes.get("receded_water") or {}
+        event, reference = data.get("event_date", "the flood date"), data.get("reference_date", "the reference")
+        sentences = [
+            _with_area(
+                f"Flooding covers {flooded.get('fraction', 0.0):.1%} of the observed area",
+                flooded.get("area_square_units"),
+                crs,
+            )
+            + f": open water on {event} where the dry-season reference of {reference} was dry."
+        ]
+        if permanent.get("pixels"):
+            sentences.append(
+                _with_area(
+                    f"A further {permanent.get('fraction', 0.0):.1%}",
+                    permanent.get("area_square_units"),
+                    crs,
+                )
+                + " was water on both dates -- rivers, lakes or sea -- and is not counted as flood."
+            )
+        if receded.get("pixels"):
+            sentences.append(
+                f"{receded.get('fraction', 0.0):.1%} that was water in the reference is dry now."
+            )
+        sentences.append(
+            f"Both dates were mapped with one {data.get('threshold_description', 'threshold')} "
+            f"on {data.get('polarisation', 'radar')} backscatter; radar sees through cloud."
+        )
+        return " ".join(sentences)
+
+
 class SARWaterNarrator(ResultNarrator):
     """Narrates a SAR water map."""
 
@@ -870,6 +927,7 @@ _NARRATORS: list[ResultNarrator] = [
     ChangeMapNarrator(),
     LandCoverNarrator(),
     SARWaterNarrator(),
+    SARFloodNarrator(),
     DetectionsNarrator(),
     VQANarrator(),
     FusionNarrator(),

@@ -91,5 +91,6 @@ def to_validation_requirements(
         requires_optical_and_sar_pair=requirements.requires_optical_and_sar_pair,
         max_days_between_images=requirements.max_days_between_images,
         time_range=requirements.time_range,
+        period_applies_to_latest_only=requirements.period_applies_to_latest_only,
         aoi=requirements.aoi,
     )

@@ -20,6 +20,7 @@ the right reason rather than being bypassed.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -70,6 +71,17 @@ class SceneRequest:
         return f"{self.start.isoformat()} to {self.end.isoformat()}"
 
 
+#: A question that names the cross-polarised channel needs it fetched too.
+CROSS_POL = re.compile(r"\bvh\b|cross[- ]?pol", re.IGNORECASE)
+
+
+def radar_assets(understanding: TaskUnderstandingResult) -> tuple[str, ...]:
+    """The Sentinel-1 bands a task needs: VV, which every SAR tool reads by
+    default, and VH only when the question asks for it. Float radar compresses
+    poorly, so each band left out halves the download."""
+    return ("vv", "vh") if CROSS_POL.search(understanding.original_query) else ("vv",)
+
+
 def optical_assets(understanding: TaskUnderstandingResult) -> tuple[str, ...]:
     """The Sentinel-2 bands a task needs.
 
@@ -87,7 +99,8 @@ def optical_assets(understanding: TaskUnderstandingResult) -> tuple[str, ...]:
 
 @dataclass
 class AcquisitionPlan:
-    """``single``, ``change`` (before, after) or ``fusion`` (optical, sar)."""
+    """``single``, ``change`` (before, after), ``fusion`` (optical, sar) or
+    ``flood`` (a dry-season reference, then the flood period)."""
 
     kind: str
     requests: list[SceneRequest]
@@ -144,6 +157,17 @@ def _bounded(
     return SceneRequest(role=role, collection=collection, start=start, end=end, assets=assets)
 
 
+def dry_season_before(start: date) -> tuple[date, date]:
+    """The January-April dry season preceding a flood period.
+
+    January to April is the driest stretch across most of India, before the
+    pre-monsoon showers and the south-west monsoon from June. A flood period
+    that begins in that season takes the previous year's.
+    """
+    year = start.year if start.month >= 5 else start.year - 1
+    return date(year, 1, 1), date(year, 4, 30)
+
+
 def _window(period: TimeRange | None, today: date, lookback: timedelta) -> tuple[date, date]:
     """The search window for one period; the recent past when there is none."""
     if period is None:
@@ -175,18 +199,32 @@ def plan_acquisition(
                 _bounded(
                     SENTINEL1, "sar",
                     start - timedelta(days=FUSION_MAX_DAYS), end + timedelta(days=FUSION_MAX_DAYS),
-                    today,
+                    today, radar_assets(understanding),
                 ),
             ],
         )
 
     collection = SENTINEL1 if sensor == "sar" else SENTINEL2
-    assets = optical_assets(understanding) if collection is SENTINEL2 else ()
+    assets = optical_assets(understanding) if collection is SENTINEL2 else radar_assets(understanding)
     if sensor == "sar" and understanding.task_type == "flood_mapping":
+        # One radar scene shows where water is, not where it should not be:
+        # the sea and the backwaters would count as flood. A dry-season
+        # reference separates new water from permanent water.
+        start, end = _window(time_range, today, lookback)
+        reference = dry_season_before(start)
         notes.append(
             "Flooding was mapped on Sentinel-1 radar, which sees through the cloud "
-            "that usually comes with a flood. Ask for optical imagery to use "
-            "Sentinel-2 instead."
+            "that usually comes with a flood, against a reference from the "
+            f"January-April dry season of {reference[0].year}, so rivers, lakes and "
+            "sea are not counted as flood. Ask for optical imagery to use Sentinel-2."
+        )
+        return AcquisitionPlan(
+            kind="flood",
+            requests=[
+                _bounded(SENTINEL1, "reference", reference[0], reference[1], today, assets),
+                _bounded(SENTINEL1, "event", start, end, today, assets),
+            ],
+            notes=notes,
         )
 
     if understanding.task_type not in CHANGE_TASKS:
@@ -240,5 +278,7 @@ __all__ = [
     "CHANGE_TASKS",
     "SceneRequest",
     "choose_sensor",
+    "dry_season_before",
+    "radar_assets",
     "plan_acquisition",
 ]
