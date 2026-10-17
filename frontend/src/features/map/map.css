@@ -1,0 +1,52 @@
+.sq-areamap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+  min-width: 0;
+}
+
+.sq-areamap__canvas {
+  width: 100%;
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius);
+  overflow: hidden;
+  /* The basemap's own colour, so the frame does not flash white while tiles load. */
+  background: #0e1116;
+}
+
+/* OpenStreetMap's light tiles, turned into a dark basemap: inverting and
+   rotating the hue back keeps water blue and parks green. Only the tiles
+   are filtered, never the outline drawn over them. */
+.sq-areamap .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+
+/* Leaflet's controls, in the workspace's palette. */
+.sq-areamap .leaflet-bar a,
+.sq-areamap .leaflet-bar a:hover {
+  background: var(--sq-surface-2, #1b2230);
+  color: var(--sq-text);
+  border-bottom-color: var(--sq-line);
+}
+
+.sq-areamap .leaflet-control-attribution {
+  background: rgba(10, 13, 18, 0.72);
+  color: var(--sq-text-3);
+  font-size: 10px;
+}
+
+.sq-areamap .leaflet-control-attribution a {
+  color: var(--sq-text-2);
+}
+
+.sq-areamap__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sq-3);
+}
+
+.sq-areamap__hint {
+  font-size: var(--sq-text-xs);
+  color: var(--sq-text-3);
+}

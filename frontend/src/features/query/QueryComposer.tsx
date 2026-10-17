@@ -1,12 +1,21 @@
-import { useEffect, useMemo, useRef, type DragEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Checkbox, Notice, Tag, TextField } from '../../components/ui'
-import { AttachIcon, ScanIcon, SendIcon } from '../../components/icons'
+import { Button, Checkbox, Disclosure, Notice, Tag, TextField } from '../../components/ui'
+import { AttachIcon, GlobeIcon, ScanIcon, SendIcon } from '../../components/icons'
 import { useWorkspace } from '../../context/workspaceContext'
 import { useCapabilities } from '../../context/capabilitiesContext'
 import { UploadDropzone } from './UploadDropzone'
 import { suggestionsFor } from './suggestions'
 import { formatCount } from '../../utils/format'
+
+/** Leaflet loads only when someone opens the map. */
+const AreaMap = lazy(() => import('../map/AreaMap').then((module) => ({ default: module.AreaMap })))
+
+/** `[west, south, east, north]` when the location field holds a box. */
+function boxIn(location: string): number[] | null {
+  const parts = location.split(',').map((part) => Number(part.trim()))
+  return parts.length === 4 && parts.every(Number.isFinite) ? parts : null
+}
 
 /** Greeting by local time. Small, but it makes the workspace feel occupied. */
 function greeting(): string {
@@ -61,6 +70,8 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
   // With nothing attached, the server fetches imagery for the place named.
   const fetching = autoFetch && usable.length === 0
   const ready = draft.trim().length > 0 && (usable.length > 0 || autoFetch)
+  // Stable between keystrokes in the question, so the map is not re-framed.
+  const pickedBox = useMemo(() => boxIn(location), [location])
   const suggestions = useMemo(
     () => suggestionsFor(capabilities, 4, fetching),
     [capabilities, fetching],
@@ -187,6 +198,15 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
             autoCapitalize="none"
             spellCheck={false}
           />
+          <Disclosure summary="Pick the area on a map" icon={<GlobeIcon size={15} />}>
+            <Suspense fallback={<div className="sq-boot" aria-busy="true" />}>
+              <AreaMap
+                label="Map for choosing the area to analyse"
+                box={pickedBox}
+                onPick={(box) => setLocation(box.join(', '))}
+              />
+            </Suspense>
+          </Disclosure>
         </div>
       ) : null}
 

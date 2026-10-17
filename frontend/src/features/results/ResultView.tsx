@@ -1,3 +1,4 @@
+import { Suspense, lazy, useMemo } from 'react'
 import { Panel } from '../../components/ui'
 import { ResultHeader } from './parts/ResultHeader'
 import { AnalysisDetails } from './parts/AnalysisDetails'
@@ -18,6 +19,21 @@ import { formatPercent } from '../../utils/format'
 import { CONFIDENCE_META } from '../../utils/labels'
 import type { TaskResponse } from '../../types/api'
 import './results.css'
+
+const AreaMap = lazy(() => import('../map/AreaMap').then((module) => ({ default: module.AreaMap })))
+
+/** The area a result describes: what was fetched, else what was uploaded. */
+function areaOf(result: TaskResponse): number[] | null {
+  if (result.acquisition?.bbox_lonlat) return result.acquisition.bbox_lonlat
+  const boxes = result.images.map((image) => image.bounds_lonlat).filter(Boolean) as number[][]
+  if (boxes.length === 0) return null
+  return [
+    Math.min(...boxes.map((box) => box[0])),
+    Math.min(...boxes.map((box) => box[1])),
+    Math.max(...boxes.map((box) => box[2])),
+    Math.max(...boxes.map((box) => box[3])),
+  ]
+}
 
 /**
  * Choose how to present a result.
@@ -62,6 +78,8 @@ export function ResultView({ result, durationMs }: ResultViewProps) {
   const successful = result.status === 'success'
   const report = result.confidence_report
   const grounded = successful && (result.findings.length > 0 || report != null)
+  // Stable between renders, so the map frames the area once.
+  const area = useMemo(() => areaOf(result), [result])
 
   return (
     <article className="sq-result">
@@ -84,6 +102,18 @@ export function ResultView({ result, durationMs }: ResultViewProps) {
       <Presentation result={result} />
 
       {result.acquisition ? <AcquisitionPanel report={result.acquisition} /> : null}
+
+      {area ? (
+        <Panel title="Where this is">
+          <Suspense fallback={<div className="sq-boot" aria-busy="true" />}>
+            <AreaMap
+              box={area}
+              label="Map outlining the area this result describes"
+              height={300}
+            />
+          </Suspense>
+        </Panel>
+      ) : null}
 
       {grounded ? (
         <div className="sq-result__grounding">
