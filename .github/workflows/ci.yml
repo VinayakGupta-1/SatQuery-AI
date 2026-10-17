@@ -48,3 +48,30 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+
+  docker:
+    name: Docker images build and serve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build both images
+        run: docker compose build
+      - name: Start the stack
+        run: docker compose up -d
+      - name: The workspace and the API answer through nginx
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/api/health
+          curl -fsS http://localhost:8080/api/capabilities | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['executable'], d; print(len(d['executable']), 'capabilities')"
+          curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+          # A client-side route is served the app, not a 404.
+          curl -fsS http://localhost:8080/results/anything | grep -q '<div id="root">'
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop
+        if: always()
+        run: docker compose down -v
