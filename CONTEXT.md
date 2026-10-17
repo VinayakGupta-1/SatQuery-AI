@@ -3,9 +3,9 @@
 > **For the next Claude session.** The user will say "read the context file and
 > continue". This file says what the project is, what exists, what was done in
 > earlier sessions, what is still open, and the traps to avoid. Last updated
-> **2026-10-17**. The automatic-imagery work of that day (section 3a) was
-> **not committed** when this was written. Check `git status` and `git log`
-> first.
+> **2026-10-17**. The automatic-imagery work of that day (section 3a) is in
+> commit `80c202e` on `main`, verified live with the user's Groq key. Check
+> `git log` first: anything newer happened after this file was written.
 
 ---
 
@@ -207,9 +207,9 @@ never call Groq.
      The CPU fallback works but is slow.
    - Compare `benchmark_report.json` with `benchmark_report_base.json`, and
      with the Groq run from item 1.
-3. **Unanswered question.** `.claude/settings.json` was already deleted before
-   the 2026-09-27 session. It has been left out of every commit. Ask the user
-   whether to restore it or commit the deletion.
+3. **Resolved 2026-10-17.** `.claude/settings.json` (an old permission
+   allowlist) was restored rather than deleted; the user said "yes for
+   everything" without picking an option.
 4. **Skipped at the user's choice:** testing with real Cartosat-2S / RISAT
    products. That needs a Bhoonidhi account, which only the user can create.
 5. **Optional:** the RSVQAxBEN (BigEarthNet) scale-up needs a paid GPU budget.
