@@ -8,8 +8,10 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
+from app.acquisition import acquire as acquire_imagery
 from app.api.ingestion import (
     IngestionError,
     assemble_scene,
@@ -30,7 +32,9 @@ from app.api.schemas import (
 )
 from app.api.store import TaskRecord, task_store
 from app.config.settings import get_settings
-from app.controller.pipeline import SatQueryPipeline
+from app.controller.pipeline import ImageryAcquirer, SatQueryPipeline
+from app.controller.task_understanding.task_understanding import TaskUnderstandingResult
+from app.schemas.acquisition import AcquisitionReport
 from app.storage.artifacts import get_artifact_store
 from app.schemas.inputs import ImageInput
 
@@ -132,10 +136,55 @@ async def _ingest_files(
         raise HTTPException(400, str(error)) from error
 
 
+def _fetcher(task_id: str, location: str | None, summaries: list[ImageSummary]) -> ImageryAcquirer:
+    """An acquirer that fetches into the task's upload directory.
+
+    Each fetched file is then described by the same code that describes an
+    upload, so its band names, sensor and date are read from the file rather
+    than taken on trust from the fetcher.
+    """
+
+    def fetch(understanding: TaskUnderstandingResult) -> tuple[list[ImageInput], AcquisitionReport]:
+        outcome = acquire_imagery(
+            understanding, location, get_artifact_store().upload_directory(task_id)
+        )
+        images: list[ImageInput] = []
+        for fetched in outcome.images:
+            try:
+                image, summary = describe_upload(
+                    fetched.path, fetched.scene.image_id, fetched.display_name
+                )
+            except IngestionError as error:
+                report = outcome.report.model_copy(
+                    update={"status": "failed", "message": str(error), "scenes": []}
+                )
+                summaries.clear()
+                return [], report
+            images.append(image)
+            summaries.append(summary)
+        return images, outcome.report
+
+    return fetch
+
+
 @router.post("", response_model=TaskResponse)
 async def create_task(
     query: str = Form(..., description="The natural-language request."),
-    files: list[UploadFile] = File(..., description="One or more raster files."),
+    files: list[UploadFile] | None = File(
+        None,
+        description=(
+            "One or more raster files. Leave out to have SatQuery fetch Sentinel "
+            "imagery for the place the question (or `location`) names."
+        ),
+    ),
+    location: str | None = Form(
+        None,
+        description=(
+            "Where to fetch imagery when no files are sent: a place name, "
+            "'lat, lon', or 'west, south, east, north'. Overrides any place in "
+            "the question."
+        ),
+    ),
     parameters: str | None = Form(
         None, description="Optional JSON object of explicit tool parameters."
     ),
@@ -150,26 +199,45 @@ async def create_task(
         None, description="Sensor name, e.g. 'sentinel2'. Disambiguates band numbers."
     ),
 ) -> TaskResponse:
-    """Run a natural-language query against uploaded imagery.
+    """Run a natural-language query against uploaded or fetched imagery.
 
     A task that is rejected by the validator or blocked by the registry still
     returns 200 with the full explanation: that is a completed analysis whose
-    answer is "no", not a transport-level failure.
+    answer is "no", not a transport-level failure. The same holds when no
+    imagery was sent and none could be fetched -- the answer says why.
     """
     if not query or not query.strip():
         raise HTTPException(400, "A query is required.")
 
+    settings = get_settings()
+    files = [upload for upload in files or [] if upload.filename]
+    if not files and not settings.fetch_enabled:
+        raise HTTPException(
+            400,
+            "At least one raster file is required: automatic imagery fetching is "
+            "turned off on this server.",
+        )
+
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     user_parameters = _parse_parameters(parameters)
-    images, summaries = await _ingest(files, task_id, as_scene, sensor)
+    summaries: list[ImageSummary] = []
+    acquire: ImageryAcquirer | None = None
+    if files:
+        images, summaries = await _ingest(files, task_id, as_scene, sensor)
+    else:
+        images = []
+        acquire = _fetcher(task_id, location, summaries)
 
-    settings = get_settings()
-    run = pipeline.run(
+    # Off the event loop: a fetch waits on the network for tens of seconds,
+    # and the server must keep answering other requests meanwhile.
+    run = await run_in_threadpool(
+        pipeline.run,
         query=query.strip(),
         images=images,
         task_id=task_id,
         output_directory=get_artifact_store().output_directory(task_id),
         user_parameters=user_parameters or None,
+        acquire=acquire,
     )
 
     artifacts = collect_artifacts(run)

@@ -62,5 +62,7 @@ def capabilities() -> CapabilitiesResponse:
         agent_llm_enabled=settings.resolved_agent_provider in {"hosted", "ollama"},
         vlm_provider=settings.vqa_provider if settings.vqa_available else None,
         vlm_local=settings.vqa_available and settings.vqa_is_local,
+        # Fetching reads remote cloud-optimised GeoTIFFs, which needs GDAL.
+        auto_fetch=settings.fetch_enabled and backend_report()["supports_compressed_geotiff"],
         backend=BackendInfo(**backend_report()),
     )

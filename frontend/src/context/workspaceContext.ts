@@ -19,6 +19,8 @@ export interface RunState {
   query: string
   /** 0..1 while the imagery is being sent. */
   uploaded: number
+  /** True when no imagery was attached and the server is fetching it. */
+  fetching: boolean
   startedAt: number | null
   /** Wall-clock round trip, measured in the browser. */
   durationMs: number | null
@@ -55,6 +57,10 @@ export interface WorkspaceState {
   /** Optional sensor hint, e.g. `sentinel2`. */
   sensor: string
   setSensor: (value: string) => void
+  /** Where to fetch imagery when none is attached. Empty means "the place
+   *  the question names". */
+  location: string
+  setLocation: (value: string) => void
 
   /* ---- the current run ------------------------------------------------ */
   run: RunState

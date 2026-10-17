@@ -7,8 +7,10 @@ from the literal sentence:
 
 *Location* -- coordinates or a bounding box become an area of interest; a named
 part of the scene ("the northern half") becomes one too; place names are kept
-as written. Place names are never geocoded: SatQuery reports them next to the
-imagery's own footprint and lets the user judge whether the two match.
+as written. Nothing here geocodes them: with uploaded imagery SatQuery reports
+them next to the imagery's own footprint and lets the user judge whether the
+two match; without imagery, :mod:`app.acquisition.location` looks the first one
+up to decide where to fetch a scene, and reports the place it resolved to.
 
 *Time* -- explicit dates, months and years become a period the validator then
 checks every acquisition date against.
@@ -117,6 +119,19 @@ def extract_time_range(query: str) -> TimeRange | None:
     if closer:
         return TimeRange(start=None, end=last, text=query[closer.start():end])
     return TimeRange(start=first, end=last, text=text)
+
+
+def extract_periods(query: str) -> list[TimeRange]:
+    """Each date, month or year the question names, as its own period, in order.
+
+    :func:`extract_time_range` merges "between 2020 and 2024" into one range,
+    which is right for checking acquisition dates. Fetching a before and an
+    after image needs the two ends apart: one scene from 2020, one from 2024.
+    """
+    return [
+        TimeRange(start=first, end=last, text=query[start:end])
+        for start, end, first, last in _mentions(query)
+    ]
 
 
 # ============================================================
@@ -340,5 +355,6 @@ __all__ = [
     "extract_locations",
     "extract_metrics",
     "extract_modality",
+    "extract_periods",
     "extract_time_range",
 ]

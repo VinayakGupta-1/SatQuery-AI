@@ -164,6 +164,12 @@
   animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
 }
 
+/* Where to fetch imagery, shown only when none is attached. */
+.sq-composer__location {
+  max-width: 520px;
+  animation: sq-rise var(--sq-t-fast) var(--sq-ease-out) both;
+}
+
 /* ---- suggestions --------------------------------------------------------- */
 
 .sq-composer__suggestions {

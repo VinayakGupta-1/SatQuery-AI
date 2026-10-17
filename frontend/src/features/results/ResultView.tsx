@@ -2,6 +2,7 @@ import { Panel } from '../../components/ui'
 import { ResultHeader } from './parts/ResultHeader'
 import { AnalysisDetails } from './parts/AnalysisDetails'
 import { ImageryPanel } from './parts/ImageryPanel'
+import { AcquisitionPanel } from './parts/AcquisitionPanel'
 import { ArtifactList } from './parts/ArtifactList'
 import { UnderstandingStrip } from './parts/UnderstandingStrip'
 import { Findings } from './parts/Findings'
@@ -81,6 +82,8 @@ export function ResultView({ result, durationMs }: ResultViewProps) {
       ) : null}
 
       <Presentation result={result} />
+
+      {result.acquisition ? <AcquisitionPanel report={result.acquisition} /> : null}
 
       {grounded ? (
         <div className="sq-result__grounding">

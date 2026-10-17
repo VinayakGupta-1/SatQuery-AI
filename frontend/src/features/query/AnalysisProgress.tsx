@@ -15,16 +15,30 @@ import type { RunState } from '../../context/workspaceContext'
  * shown. The authoritative per-stage outcome arrives with the result and is
  * available under "Analysis details".
  */
-const STAGES = [
-  'Understanding the request',
-  'Checking imagery against requirements',
-  'Selecting a capability',
-  'Running the analysis',
-  'Preparing the result',
-] as const
+interface Stage {
+  name: string
+  /** How long to dwell on the stage before moving on. */
+  dwellMs: number
+}
 
-/** How long to dwell on each stage before moving on. */
-const STAGE_DWELL_MS = 2600
+const STAGES: Stage[] = [
+  { name: 'Understanding the request', dwellMs: 2600 },
+  { name: 'Checking imagery against requirements', dwellMs: 2600 },
+  { name: 'Selecting a capability', dwellMs: 2600 },
+  { name: 'Running the analysis', dwellMs: 2600 },
+  { name: 'Preparing the result', dwellMs: 2600 },
+]
+
+/**
+ * With nothing attached, the server first finds the place and downloads
+ * Sentinel imagery for it - the longest stage by far, typically 10 to 45
+ * seconds - so the strip says so and lingers there.
+ */
+const FETCH_STAGES: Stage[] = [
+  { name: 'Understanding the request', dwellMs: 2000 },
+  { name: 'Finding the place and fetching satellite imagery', dwellMs: 20000 },
+  ...STAGES.slice(1),
+]
 
 interface AnalysisProgressProps {
   run: RunState
@@ -34,6 +48,7 @@ interface AnalysisProgressProps {
 export function AnalysisProgress({ run, onCancel }: AnalysisProgressProps) {
   const [stage, setStage] = useState(0)
   const uploading = run.phase === 'uploading'
+  const stages = run.fetching ? FETCH_STAGES : STAGES
 
   useEffect(() => {
     if (uploading) {
@@ -42,13 +57,16 @@ export function AnalysisProgress({ run, onCancel }: AnalysisProgressProps) {
     }
     // Hold on the last stage rather than looping: a loop would suggest the
     // work had restarted.
-    const timer = window.setInterval(() => {
-      setStage((current) => Math.min(current + 1, STAGES.length - 1))
-    }, STAGE_DWELL_MS)
-    return () => window.clearInterval(timer)
-  }, [uploading])
+    if (stage >= stages.length - 1) return
+    const timer = window.setTimeout(() => setStage(stage + 1), stages[stage].dwellMs)
+    return () => window.clearTimeout(timer)
+  }, [uploading, stage, stages])
 
-  const label = uploading ? 'Sending imagery' : STAGES[stage]
+  const label = uploading
+    ? run.fetching
+      ? 'Sending the question'
+      : 'Sending imagery'
+    : stages[stage].name
 
   return (
     <section className="sq-analysing" aria-busy="true">
@@ -90,7 +108,7 @@ export function AnalysisProgress({ run, onCancel }: AnalysisProgressProps) {
           </div>
         ) : (
           <ol className="sq-analysing__stages">
-            {STAGES.map((name, index) => (
+            {stages.map(({ name }, index) => (
               <li
                 key={name}
                 className={[

@@ -3,8 +3,9 @@
 > **For the next Claude session.** The user will say "read the context file and
 > continue". This file says what the project is, what exists, what was done in
 > earlier sessions, what is still open, and the traps to avoid. Last updated
-> **2026-09-27** at commit `18e330e` on `main`. Check `git log` first: anything
-> newer than that commit happened after this file was written.
+> **2026-10-17**. The automatic-imagery work of that day (section 3a) was
+> **not committed** when this was written. Check `git status` and `git log`
+> first.
 
 ---
 
@@ -48,8 +49,9 @@ limits. The user has been told this and was advised to relabel the box
 
 - **Code: complete.** Commits `1081837` (the whole architecture) and `18e330e`
   (current Groq models, quota handling).
-- **Tests:** 641 backend tests pass on both raster backends. The frontend lints
-  and builds clean.
+- **Tests:** 682 backend tests pass on both raster backends (641 before
+  2026-10-17, plus 41 in `tests/test_acquisition.py`). The frontend lints and
+  builds clean.
 - **UI:** verified in headless Chrome at desktop and phone width (Playwright
   driving the installed Chrome, from a scratch virtual environment).
 - **Real model runs:** verified with the user's Groq key: NDVI, captioning with
@@ -73,11 +75,69 @@ limits. The user has been told this and was advised to relabel the box
 | Captioning + region grounding | vlm | `image_captioning` |
 | Change-VQA (measured first, then described) | hybrid | `change_vqa` |
 
+## 3a. Automatic imagery (added 2026-10-17)
+
+The user asked that nobody should have to upload imagery. Now a request
+without files fetches it.
+
+- **Package:** `backend/app/acquisition/`.
+  - `location.py`: the location field, then coordinates or a bbox in the
+    question, then the first place name, geocoded with Nominatim. It prefers
+    area results to points: "Hosur" ranked the railway station first.
+  - `planner.py`: the sensor and windows from the task and dates. Flooding
+    uses Sentinel-1 unless the question says optical. Change gets before and
+    after windows. Fusion gets S2 plus S1 within 12 days.
+  - `catalog.py`: Planetary Computer STAC search, SAS token signing, coverage,
+    and grouping tiles by pass.
+  - `reader.py`: rasterio WarpedVRT reads of remote COGs onto one grid, using
+    the overview level.
+  - `service.py`: ranking, an SCL cloud check on the leading candidates,
+    parallel band download, removing the +1000 offset for baseline >= 04.00,
+    and writing a tagged GeoTIFF.
+- **Pipeline** (`pipeline.py`): `run(..., acquire=)` is called after
+  understanding, and only when the task was understood. The files then go
+  through adaptation and validation like uploads.
+  - The tool is given `mask_band=SCL` when it accepts one.
+  - A failed fetch sets `PipelineRun.acquisition` and becomes the answer.
+    Outcome `needs_input` (no place) or `imagery_unavailable` gives status
+    `needs_clarification`; `acquisition_failed` gives `execution_error`.
+- **API:** `files` is optional and `location` is a new form field.
+  - The pipeline runs in a threadpool.
+  - `TaskResponse.acquisition` and `capabilities.auto_fetch` are new.
+  - With `SATQUERY_FETCH_ENABLED=false`, a request without files gets a 400.
+- **Frontend:**
+  - The composer allows Analyse with no file when `auto_fetch` is on, and
+    shows a location field and place-based suggestions.
+  - The progress view has a fetch stage.
+  - `AcquisitionPanel` shows the place, scenes and notes. `NonSuccessResult`
+    has a "Where should SatQuery look?" branch, and the Help page explains it.
+- **Rules reader:** "lost / gained / shrunk / ..." with two dates (or
+  "since X") now means change detection. "surface water" and similar phrases
+  mean `ndwi`.
+- **Measured live** (from this machine, about 0.5-1 MB/s to Planetary
+  Computer, which is in West Europe):
+
+  | Question | Time |
+  |---|---|
+  | Pune NDVI | 17 s |
+  | Kochi flood, S1 | 10 s |
+  | Hosur change 2019 to 2025, 4-tile mosaic | 45 s |
+  | Chilika NDWI | 15 s |
+  | Fusion near Kochi | 44 s |
+
+  Time is dominated by bytes, which is why only the needed bands are
+  fetched, the defaults are 20 km and 1024 px, and grids snap to 10/20/40/80 m.
+- **Tests:** `conftest.py` forces `SATQUERY_FETCH_ENABLED=0`. Acquisition tests
+  turn it on and monkeypatch `location.request_json`, `catalog.request_json`
+  and `reader.read_asset`.
+- **Not done:** no Landsat; no mosaicking of different dates; areas over
+  20 km are cut, not tiled.
+
 ## 4. How to run things
 
 ```bash
 # Backend (from backend/)
-.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 641 tests
+.venv/Scripts/python.exe -m pytest -q -p no:warnings                                  # 682 tests
 SATQUERY_RASTER_BACKEND=builtin .venv/Scripts/python.exe -m pytest -q -p no:warnings  # the same, without GDAL
 .venv/Scripts/uvicorn app.main:app --reload                                           # http://127.0.0.1:8000
 

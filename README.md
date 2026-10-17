@@ -2,11 +2,14 @@
 
 **Natural language in. Validated remote-sensing workflows out.**
 
-Ask a question about satellite imagery in plain English — *"How healthy is the
-vegetation?"*, *"How many water bodies are there?"*, *"Where did the flood
-spread?"* — and SatQuery works out which analysis answers it, checks that your
-imagery can actually support that analysis, runs it, and returns a map,
-statistics and an explanation of every decision it made.
+Ask a question about a place in plain English — *"How healthy is the
+vegetation in Pune?"*, *"Find the areas affected by flooding near Kochi in
+August 2024"*, *"Has vegetation been lost around Hosur between 2019 and
+2025?"* — and SatQuery finds the place, fetches the right Sentinel-2 or
+Sentinel-1 imagery for it, works out which analysis answers the question,
+checks that the imagery can actually support that analysis, runs it, and
+returns a map, statistics and an explanation of every decision it made. You can
+also attach your own GeoTIFFs instead.
 
 The model proposes; deterministic code decides. A language model may interpret
 the question, but only tools in a controlled registry can run, and a
@@ -55,6 +58,46 @@ npm install
 npm run dev                       # http://localhost:5173
 ```
 
+### No imagery needed
+
+Ask about a place and attach nothing. SatQuery fetches the imagery itself:
+
+| Ask | What is fetched |
+|---|---|
+| "How healthy is the vegetation in Pune?" | The clearest Sentinel-2 L2A scene of the last 120 days |
+| "Map the surface water around Chilika Lake in March 2024" | The clearest Sentinel-2 scene from March 2024 |
+| "Find the areas affected by flooding near Kochi in August 2024" | A Sentinel-1 RTC radar scene, which sees through monsoon cloud |
+| "Has vegetation been lost around Hosur between 2019 and 2025?" | One scene from each year, the 2019 one matched to the season of the 2025 one, on one pixel grid |
+| "Fuse optical and SAR to map water near 9.97, 76.28" | A Sentinel-2 scene and the nearest Sentinel-1 pass within 12 days |
+
+How it works (`backend/app/acquisition/`):
+
+1. **Where.** The place is taken from the location field, from coordinates in
+   the question, or from the first place name in it, looked up in
+   OpenStreetMap's Nominatim. Areas up to 20 km across are fetched. A larger
+   place is cut to 20 km around its centre, and the answer says so.
+2. **What and when.** The understood task decides the sensor and the number of
+   scenes. The question's dates decide the search windows.
+3. **Which scene.** Scenes are searched in Microsoft Planetary Computer's free
+   STAC catalogue (no account needed). They are ranked by coverage of the
+   area, then cloud, then recency. The catalogue's cloud figure describes a
+   whole 110 km tile, so the leading candidates are re-checked on their own
+   SCL band over the area itself. Adjacent tiles of one pass are mosaicked.
+4. **Download.** Only the area's pixels are read from the cloud-optimised
+   GeoTIFFs, and only the bands the task uses. Large areas are read from the
+   files' 20/40/80 m overviews. A typical question takes 10–45 s, most of it
+   download.
+5. **Harmonise and write.** The +1000 reflectance offset of Sentinel-2
+   processing baseline 04.00 and later is removed. Each scene is written as a
+   self-describing GeoTIFF, which is then validated exactly like an upload.
+   For tools that can mask cloud, the scene's SCL band is named as the cloud
+   mask, as a visible resolved parameter.
+
+Every result shows the resolved place, each scene's date, platform and cloud
+over the area, the catalogue item ids, and every adjustment made. If no place
+is named, or the archive has nothing usable, the answer says exactly that and
+what to change.
+
 ### Something to analyse
 
 A generator writes five synthetic but genuine GeoTIFFs over one footprint: two
@@ -98,6 +141,12 @@ anything:
   model on your own machine instead, and `SATQUERY_VQA_MODEL` swaps in any
   vision model — including one fine-tuned on remote-sensing data — without a
   code change.
+- **`SATQUERY_FETCH_ENABLED=false`**: turns automatic imagery off, for a
+  server that must not reach the internet; uploads are then required. With it
+  on (the default), the place named in a question goes to OpenStreetMap's
+  geocoder and the area and dates to Planetary Computer's catalogue.
+  `SATQUERY_FETCH_MAX_EXTENT_KM` (20) and `SATQUERY_FETCH_MAX_PIXELS` (1024)
+  trade area and detail against download time.
 
 `frontend/.env.example` covers pointing the workspace at a backend on another
 origin.

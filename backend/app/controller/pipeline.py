@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -53,12 +53,17 @@ from app.controller.task_understanding.task_understanding import (
 )
 from app.controller.tool_selection.selector import ToolSelectionResult, ToolSelector
 from app.registry.registry import get_tool
-from app.schemas.errors import ValidationResult
+from app.schemas.acquisition import AcquisitionReport
+from app.schemas.errors import ErrorCode, ValidationIssue, ValidationResult
 from app.schemas.inputs import ImageInput
 from app.schemas.results import FinalResult, TraceEvent, TraceStep
 from app.validator.validator import validate_inputs
 
 logger = get_logger("pipeline")
+
+#: Finds imagery for a question that arrived without any: given the understood
+#: request, returns the images and a report of how they were found.
+ImageryAcquirer = Callable[[TaskUnderstandingResult], tuple[list[ImageInput], AcquisitionReport]]
 
 
 class PipelineRun(BaseModel):
@@ -89,6 +94,12 @@ class PipelineRun(BaseModel):
     #: Every stage as it actually ran, timed, with the tool's own steps inside
     #: the execution stage. The same run, told in order.
     trace: list[TraceEvent] = Field(default_factory=list)
+    #: How the imagery was fetched, when the request arrived without any.
+    acquisition: AcquisitionReport | None = None
+
+    @property
+    def acquisition_failed(self) -> bool:
+        return self.acquisition is not None and not self.acquisition.succeeded
 
     @property
     def route(self) -> str:
@@ -121,7 +132,17 @@ class PipelineRun(BaseModel):
         is answerable once more information arrives. ``authorised`` is the
         outcome of a dry run that passed every check and stopped before the
         tool was called.
+
+        When imagery had to be fetched and could not be, that is the outcome:
+        ``needs_input`` when the question named no place, ``imagery_unavailable``
+        when the catalogue had nothing usable, ``acquisition_failed`` when the
+        provider could not be reached.
         """
+        if self.acquisition_failed:
+            return {
+                "needs_location": "needs_input",
+                "unavailable": "imagery_unavailable",
+            }.get(self.acquisition.status, "acquisition_failed")
         if not self.validation.valid:
             return "rejected"
         if self.selection.status != "selected":
@@ -151,7 +172,13 @@ class PipelineRun(BaseModel):
         # bound. That is a gap in what the system can do, not a failure of the
         # run, so the user is asked for something it *can* do rather than
         # shown an error.
-        if outcome in {"requires_clarification", "needs_input", "blocked", "not_executed"}:
+        if outcome in {
+            "requires_clarification",
+            "needs_input",
+            "blocked",
+            "not_executed",
+            "imagery_unavailable",
+        }:
             return "needs_clarification"
         return "execution_error"
 
@@ -160,6 +187,8 @@ class PipelineRun(BaseModel):
         """The question to put back to the user, when one is needed."""
         if self.status != "needs_clarification":
             return None
+        if self.acquisition_failed:
+            return self.acquisition.message
         if self.agent is not None and self.agent.plan.clarification:
             return self.agent.plan.clarification
         if self.selection.status != "selected":
@@ -232,6 +261,7 @@ class SatQueryPipeline:
         output_directory: str | None = None,
         user_parameters: dict[str, Any] | None = None,
         execute: bool = True,
+        acquire: ImageryAcquirer | None = None,
     ) -> PipelineRun:
         """Run every stage in order and return the complete record.
 
@@ -239,6 +269,10 @@ class SatQueryPipeline:
         including the Registry's execution policy runs exactly as it would for
         real, and the tool itself is never called, so nothing is computed and
         nothing is written.
+
+        With no ``images`` and an ``acquire`` callable, imagery is fetched once
+        the request is understood -- the task decides which sensor and how many
+        scenes -- and then validated exactly like an upload.
         """
         task_id = task_id or f"task_{uuid.uuid4().hex[:12]}"
         trace = _Tracer()
@@ -254,6 +288,15 @@ class SatQueryPipeline:
                 part for part in (f"{decision.plan.provider} provider", _describe_context(understanding)) if part
             ),
         )
+        # No imagery came with the request: fetch what the understood task
+        # needs. The files then go through every check an upload would. A
+        # request whose task was not understood has nothing to fetch for --
+        # downloading a scene would only delay the clarifying question.
+        acquisition: AcquisitionReport | None = None
+        if not images and acquire is not None and understanding.task_type:
+            images, acquisition = acquire(understanding)
+            trace.record("acquisition", acquisition.status, acquisition.message)
+
         # Some requests mean different measurements on different sensors --
         # water is NDWI on optical imagery and backscatter on radar -- and only
         # the uploaded files can say which sensor this is.
@@ -283,10 +326,40 @@ class SatQueryPipeline:
             f"{tool.tool_id} ({tool.engine.value} engine)" if tool else selection.selection_reason,
         )
 
+        # Fetched Sentinel-2 scenes always carry their SCL band. A tool that can
+        # mask cloud is told to use it -- visibly, as a resolved parameter --
+        # because an index averaged over cloud is confidently wrong.
+        if (
+            acquisition is not None
+            and acquisition.succeeded
+            and tool is not None
+            and "mask_band" in tool.parameters
+            and not (user_parameters or {}).get("mask_band")
+            and any(scene.sensor == "sentinel2" for scene in acquisition.scenes)
+        ):
+            user_parameters = {**(user_parameters or {}), "mask_band": "SCL"}
+            acquisition.notes.append(
+                "Cloud, cloud-shadow and cirrus pixels were excluded from the "
+                "measurement using the scene's SCL band."
+            )
+
         # Stage 5: the deterministic gate.
         validation = validate_inputs(
             images, to_validation_requirements(requirements, tool)
         )
+        if acquisition is not None and not acquisition.succeeded:
+            # "Expected at least one image" would be true and useless; why no
+            # image could be fetched is what the user needs to hear.
+            validation = ValidationResult(
+                valid=False,
+                errors=[
+                    ValidationIssue(
+                        code=ErrorCode.MISSING_INPUT,
+                        message=acquisition.message,
+                        field="location" if acquisition.status == "needs_location" else "imagery",
+                    )
+                ],
+            )
         trace.record(
             "validation",
             "valid" if validation.valid else "rejected",
@@ -347,6 +420,8 @@ class SatQueryPipeline:
             configuration=configuration,
             context=understanding.context,
         )
+        if acquisition is not None and not acquisition.succeeded:
+            final = final.model_copy(update={"answer": acquisition.message})
         report = final.confidence_report
         trace.record(
             "result_integration",
@@ -380,6 +455,7 @@ class SatQueryPipeline:
             execution=execution,
             final=final,
             trace=trace.events,
+            acquisition=acquisition,
         )
 
 

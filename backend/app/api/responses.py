@@ -153,6 +153,7 @@ def build_task_response(
         findings=run.final.findings,
         confidence_report=run.final.confidence_report,
         trace=run.trace,
+        acquisition=run.acquisition,
     )
 
 

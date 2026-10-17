@@ -389,6 +389,48 @@ export interface TaskResponse {
   confidence_report: ConfidenceReport | null
   /** Every pipeline stage as it ran, timed, with the tool's own steps. */
   trace: TraceEvent[]
+  /** Where the imagery came from, when SatQuery fetched it; null for uploads. */
+  acquisition: AcquisitionReport | null
+}
+
+/** `app.schemas.acquisition.AcquiredScene` - one scene SatQuery downloaded. */
+export interface AcquiredScene {
+  image_id: string
+  /** `image`, `before`, `after`, `optical` or `sar`. */
+  role: string
+  collection: string
+  sensor: string
+  modality: string
+  platform: string | null
+  /** Catalogue items; more than one when adjacent tiles were mosaicked. */
+  item_ids: string[]
+  acquired: string
+  /** Cloud over the whole catalogue tile, in percent, as the provider reports it. */
+  tile_cloud_percent: number | null
+  /** Share of the area itself the scene's SCL band calls cloud (0..1). */
+  area_cloud_fraction: number | null
+  /** Share of the area the scene has data for (0..1). */
+  coverage: number
+  resolution_m: number
+  bands: string[]
+}
+
+export type AcquisitionStatus = 'fetched' | 'needs_location' | 'unavailable' | 'failed'
+
+/** `app.schemas.acquisition.AcquisitionReport`. */
+export interface AcquisitionReport {
+  status: AcquisitionStatus
+  message: string
+  /** The place as resolved: the geocoder's full name, or the coordinates. */
+  place: string | null
+  place_source: string | null
+  /** `[west, south, east, north]` in degrees - the area actually downloaded. */
+  bbox_lonlat: number[] | null
+  period: string | null
+  provider: string
+  attribution: string
+  scenes: AcquiredScene[]
+  notes: string[]
 }
 
 export interface TaskListEntry {
@@ -436,6 +478,9 @@ export interface CapabilitiesResponse {
   vlm_provider: string | null
   /** True when the vision model runs on this machine. */
   vlm_local: boolean
+  /** True when a question may be asked without imagery: the server then
+   *  fetches Sentinel-2 / Sentinel-1 scenes for the place it names. */
+  auto_fetch: boolean
   backend: BackendInfo
 }
 

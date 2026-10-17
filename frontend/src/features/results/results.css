@@ -1137,3 +1137,92 @@
   font-size: var(--sq-text-xs);
   color: var(--sq-text-3);
 }
+
+/* ==========================================================================
+   Imagery fetched for the question
+   ========================================================================== */
+
+.sq-acquired {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-3);
+  font-size: var(--sq-text-sm);
+}
+
+.sq-acquired :where(p) {
+  margin: 0;
+}
+
+.sq-acquired__place {
+  color: var(--sq-text-2);
+  overflow-wrap: anywhere;
+}
+
+.sq-acquired__place strong {
+  color: var(--sq-text);
+}
+
+.sq-acquired__bbox {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+}
+
+.sq-acquired__scenes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-2);
+}
+
+.sq-acquired__scene {
+  padding: var(--sq-3);
+  border: 1px solid var(--sq-line);
+  border-radius: var(--sq-radius);
+  background: var(--sq-surface-1);
+  min-width: 0;
+}
+
+.sq-acquired__scene-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sq-2);
+}
+
+.sq-acquired__scene-head span {
+  color: var(--sq-text-2);
+}
+
+.sq-acquired__facts {
+  margin-top: var(--sq-1);
+  color: var(--sq-text-2);
+}
+
+.sq-acquired__items {
+  margin-top: var(--sq-1);
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+  overflow-wrap: anywhere;
+}
+
+.sq-acquired__period {
+  color: var(--sq-text-3);
+}
+
+.sq-acquired__notes {
+  margin: 0;
+  padding-left: var(--sq-5);
+  color: var(--sq-text-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sq-1);
+}
+
+.sq-acquired__attribution {
+  font-size: var(--sq-text-2xs);
+  color: var(--sq-text-3);
+}

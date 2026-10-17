@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.acquisition import AcquisitionReport
 from app.schemas.results import ConfidenceReport, Evidence, Finding, TraceEvent
 
 
@@ -203,6 +204,9 @@ class TaskResponse(BaseModel):
     confidence_report: ConfidenceReport | None = None
     #: Every pipeline stage as it ran, timed, with the tool's own steps.
     trace: list[TraceEvent] = Field(default_factory=list)
+    #: Where the imagery came from, when SatQuery fetched it rather than the
+    #: user uploading it: the place, the period searched, each scene chosen.
+    acquisition: AcquisitionReport | None = None
 
 
 class TaskListEntry(BaseModel):
@@ -266,6 +270,9 @@ class CapabilitiesResponse(BaseModel):
     vlm_provider: str | None = None
     #: True when the vision model runs on this machine, so no imagery leaves it.
     vlm_local: bool = False
+    #: True when a request may arrive without imagery: SatQuery then fetches
+    #: Sentinel-2 or Sentinel-1 scenes for the place the question names.
+    auto_fetch: bool = False
     backend: "BackendInfo"
 
 

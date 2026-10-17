@@ -17,6 +17,7 @@ const IDLE_RUN: RunState = {
   phase: 'idle',
   query: '',
   uploaded: 0,
+  fetching: false,
   startedAt: null,
   durationMs: null,
   result: null,
@@ -75,6 +76,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [files, setFiles] = useState<StagedFile[]>([])
   const [asScene, setAsScene] = useState(false)
   const [sensor, setSensor] = useState('')
+  const [location, setLocation] = useState('')
   const [run, setRun] = useState<RunState>(IDLE_RUN)
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<ValidationResponse | null>(null)
@@ -152,17 +154,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController()
       controllerRef.current = controller
       const startedAt = Date.now()
+      // Nothing attached: the server fetches imagery for the place named.
+      const fetching = usable.length === 0
 
       setRun({
         ...IDLE_RUN,
         phase: 'uploading',
         query,
+        fetching,
         startedAt,
       })
 
       try {
         const result = await analyze(
-          { query, files: usable, asScene, sensor: sensor || null },
+          { query, files: usable, asScene, sensor: sensor || null, location: location || null },
           {
             signal: controller.signal,
             onUploadProgress: (fraction) => {
@@ -186,6 +191,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           phase: 'complete',
           query,
           uploaded: 1,
+          fetching,
           startedAt,
           durationMs,
           result,
@@ -222,6 +228,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           phase: 'failed',
           query,
           uploaded: 1,
+          fetching,
           startedAt,
           durationMs: Date.now() - startedAt,
           result: null,
@@ -232,7 +239,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         controllerRef.current = null
       }
     },
-    [files, asScene, sensor, setRecords],
+    [files, asScene, sensor, location, setRecords],
   )
 
   /* ---- dry run --------------------------------------------------------- */
@@ -302,6 +309,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setAsScene,
       sensor,
       setSensor,
+      location,
+      setLocation,
       run,
       submit,
       cancel,
@@ -325,6 +334,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       clearFiles,
       asScene,
       sensor,
+      location,
       run,
       submit,
       cancel,

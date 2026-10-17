@@ -7,6 +7,8 @@ from app.controller.task_understanding.context import (
     FUSION_PATTERN,
     SAR_PATTERN,
     extract_context,
+    extract_periods,
+    extract_time_range,
 )
 from app.schemas.spatiotemporal import QueryContext
 
@@ -27,6 +29,23 @@ CHANGE_PHRASES = (
     "between these two images", "between the two images", "between these images",
     "between these two dates", "between the two dates", "between these dates",
 )
+
+#: "Has vegetation been lost between 2019 and 2025?" names no change word,
+#: but something lost, gained, grown or shrunk across two named dates -- or
+#: since one -- can only be measured by comparing two acquisitions.
+CHANGE_VERB_PATTERN = re.compile(
+    r"\b(lost|loss|gained|gain|gains|grown|grew|shrunk|shrank|shrinking|expanded|"
+    r"expansion|increased?|decreased?|declined?|disappeared|deforest\w*|encroach\w*)\b"
+)
+
+
+def spans_two_dates(query: str) -> bool:
+    """Whether a question names two dates, or a period open at its end ("since 2020")."""
+    if len(extract_periods(query)) >= 2:
+        return True
+    period = extract_time_range(query)
+    return period is not None and period.start is not None and period.end is None
+
 
 #: A count asks for discrete objects -- unless what is being counted is a unit
 #: of area or a pixel, which is a measurement, not a detection.
@@ -63,7 +82,8 @@ TASK_PHRASES: list[tuple[str, tuple[str, ...]]] = [
          "scene classification"),
     ),
     ("ndvi", ("vegetation index", "vegetation health", "vegetation")),
-    ("ndwi", ("water index", "water bodies", "waterbody")),
+    ("ndwi", ("water index", "water bodies", "waterbody", "surface water", "open water",
+              "water extent", "water spread")),
     # Built-up index. Checked before object detection because these phrases
     # ask for the *extent* of built-up land, which is an index task, rather
     # than for discrete building objects.
@@ -149,6 +169,8 @@ class TaskUnderstanding:
     @staticmethod
     def _detect_task_type(query: str) -> Optional[str]:
         if any(phrase in query for phrase in CHANGE_PHRASES):
+            return "change_detection"
+        if CHANGE_VERB_PATTERN.search(query) and spans_two_dates(query):
             return "change_detection"
         if FUSION_PATTERN.search(query):
             return "optical_sar_fusion"

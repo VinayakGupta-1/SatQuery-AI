@@ -49,7 +49,11 @@ export function tool(toolId: string, options?: RequestOptions): Promise<ToolSumm
 /** The request body of `POST /api/tasks`, as the backend's form fields. */
 export interface AnalysisRequest {
   query: string
+  /** May be empty: the backend then fetches imagery for the place named. */
   files: File[]
+  /** Where to fetch imagery when no files are sent: a place, `lat, lon`, or a
+   *  `west, south, east, north` box. Overrides any place in the question. */
+  location?: string | null
   /** Treat the uploads as bands of one scene rather than separate images. */
   asScene?: boolean
   /** Sensor name, e.g. `sentinel2`. Disambiguates numeric band names. */
@@ -64,6 +68,9 @@ function buildForm(request: AnalysisRequest, includeParameters: boolean): FormDa
   for (const file of request.files) form.append('files', file, file.name)
   form.append('as_scene', request.asScene ? 'true' : 'false')
   if (request.sensor?.trim()) form.append('sensor', request.sensor.trim())
+  if (request.files.length === 0 && request.location?.trim()) {
+    form.append('location', request.location.trim())
+  }
   if (includeParameters && request.parameters && Object.keys(request.parameters).length > 0) {
     form.append('parameters', JSON.stringify(request.parameters))
   }

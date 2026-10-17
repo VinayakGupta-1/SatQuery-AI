@@ -313,9 +313,12 @@ def test_empty_query_is_rejected(client, scene_bytes):
     assert response.status_code == 400
 
 
-def test_missing_file_is_rejected(client):
+def test_missing_file_is_rejected_when_fetching_is_off(client):
+    # The suite runs with SATQUERY_FETCH_ENABLED=0; with it on, a request
+    # without files fetches imagery instead (tests/test_acquisition.py).
     response = client.post("/api/tasks", data={"query": "Calculate NDVI"})
-    assert response.status_code == 422  # FastAPI's own required-field check
+    assert response.status_code == 400
+    assert "fetching is turned off" in response.json()["detail"]
 
 
 def test_non_raster_extension_is_rejected(client):

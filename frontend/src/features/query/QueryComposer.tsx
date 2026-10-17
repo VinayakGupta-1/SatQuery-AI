@@ -29,6 +29,10 @@ interface QueryComposerProps {
  * the scene toggle appears only with more than one raster staged, the sensor
  * hint lives behind a disclosure, and the dry-run check only offers itself
  * once there is imagery to check.
+ *
+ * Imagery is optional when the server can fetch it (`auto_fetch`): with
+ * nothing attached, the question's place - or the location field - decides
+ * where SatQuery downloads a Sentinel scene.
  */
 export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
   const {
@@ -40,6 +44,8 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
     setAsScene,
     sensor,
     setSensor,
+    location,
+    setLocation,
     check,
     checking,
     checkResult,
@@ -51,8 +57,14 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
   const dropRef = useRef<HTMLDivElement | null>(null)
 
   const usable = files.filter((entry) => !entry.problem)
-  const ready = draft.trim().length > 0 && usable.length > 0
-  const suggestions = useMemo(() => suggestionsFor(capabilities), [capabilities])
+  const autoFetch = capabilities?.auto_fetch ?? false
+  // With nothing attached, the server fetches imagery for the place named.
+  const fetching = autoFetch && usable.length === 0
+  const ready = draft.trim().length > 0 && (usable.length > 0 || autoFetch)
+  const suggestions = useMemo(
+    () => suggestionsFor(capabilities, 4, fetching),
+    [capabilities, fetching],
+  )
 
   // Grow the box with the question rather than scrolling inside a fixed one.
   useEffect(() => {
@@ -104,7 +116,11 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
           ref={textareaRef}
           className="sq-composer__input"
           rows={2}
-          placeholder="Ask about vegetation, water, land cover, flooding, or what changed between two dates."
+          placeholder={
+            fetching
+              ? 'Ask about a place: vegetation in Pune, or flooding near Kochi in 2024.'
+              : 'Ask about vegetation, water, land cover, flooding, or what changed between two dates.'
+          }
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -124,6 +140,13 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
           {usable.length > 0 ? (
             <Tag tone="accent">
               {formatCount(usable.length)} {usable.length === 1 ? 'raster' : 'rasters'}
+            </Tag>
+          ) : fetching ? (
+            <Tag
+              tone="info"
+              title="Sentinel-2 or Sentinel-1 imagery is downloaded for the place in the question"
+            >
+              Imagery fetched automatically
             </Tag>
           ) : null}
 
@@ -153,8 +176,31 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
         </div>
       </div>
 
+      {fetching ? (
+        <div className="sq-composer__location">
+          <TextField
+            label="Location (optional)"
+            placeholder="Pune  ·  18.52, 73.85  ·  73.80, 18.45, 73.95, 18.60"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+            hint="Leave empty to use the place named in the question. A place name, a latitude and longitude, or a west, south, east, north box."
+            autoCapitalize="none"
+            spellCheck={false}
+          />
+        </div>
+      ) : null}
+
       <p className="sq-composer__shortcut">
-        {usable.length === 0 ? (
+        {fetching ? (
+          <>
+            No imagery needed: SatQuery fetches the clearest recent Sentinel-2
+            scene of the place you name (Sentinel-1 radar for floods), or one from
+            the dates you mention. You can still attach your own GeoTIFF.{' '}
+            <Link to="/help" className="sq-composer__where">
+              How imagery is chosen
+            </Link>
+          </>
+        ) : usable.length === 0 ? (
           <>
             Attach a satellite scene to analyse —{' '}
             <span className="sq-mono">
@@ -247,7 +293,7 @@ export function QueryComposer({ operator, onSubmit }: QueryComposerProps) {
                   }}
                 >
                   {suggestion.text}
-                  {suggestion.images > 1 ? (
+                  {suggestion.images > 1 && !fetching ? (
                     <span className="sq-composer__suggestion-note">
                       {suggestion.images} images
                     </span>

@@ -13,6 +13,9 @@ the environment can still be controlled:
   sends every pipeline test's query to a hosted model.
 * Hosted-model credentials and provider choices exported in the shell are
   dropped for the same reason. Tests that need them set them explicitly.
+* Automatic imagery fetching is off, so a request without files can never
+  reach Planetary Computer or the geocoder. Acquisition tests turn it on and
+  replace the network functions themselves.
 """
 
 import os
@@ -25,5 +28,6 @@ if BACKEND_ROOT not in sys.path:
 
 os.environ["SATQUERY_LOAD_DOTENV"] = "0"
 for _name in list(os.environ):
-    if _name.startswith(("SATQUERY_AGENT_", "SATQUERY_VQA_")):
+    if _name.startswith(("SATQUERY_AGENT_", "SATQUERY_VQA_", "SATQUERY_FETCH_", "SATQUERY_GEOCODER_")):
         del os.environ[_name]
+os.environ["SATQUERY_FETCH_ENABLED"] = "0"

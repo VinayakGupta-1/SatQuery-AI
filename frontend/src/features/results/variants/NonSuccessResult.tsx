@@ -82,6 +82,53 @@ export function NonSuccessResult({ result }: { result: TaskResponse }) {
     )
   }
 
+  // Nothing was attached and no imagery could be fetched: the remedy is a
+  // place, a different period, or a file - not a different capability.
+  const acquisition = result.acquisition
+  if (acquisition && acquisition.status !== 'fetched') {
+    const needsPlace = acquisition.status === 'needs_location'
+    return (
+      <Panel>
+        <div className="sq-outcome">
+          <div className="sq-outcome__icon sq-outcome__icon--warning">
+            <AlertIcon size={20} />
+          </div>
+          <h2 className="sq-outcome__title">
+            {needsPlace
+              ? 'Where should SatQuery look?'
+              : acquisition.status === 'unavailable'
+                ? 'No usable imagery was found'
+                : 'The imagery could not be fetched'}
+          </h2>
+          <p className="sq-outcome__body">{acquisition.message}</p>
+          {acquisition.place ? (
+            <p className="sq-outcome__body">
+              Place searched: <strong>{acquisition.place}</strong>
+              {acquisition.period ? ` · ${acquisition.period}` : ''}
+            </p>
+          ) : null}
+
+          <div className="sq-outcome__actions">
+            <Link
+              to="/"
+              className="sq-btn sq-btn--primary"
+              onClick={() => setDraft(result.query)}
+            >
+              {needsPlace ? 'Add a place to the question' : 'Change the place or dates'}
+            </Link>
+            <Link
+              to="/"
+              className="sq-btn sq-btn--ghost"
+              onClick={() => setDraft(result.query)}
+            >
+              Attach imagery instead
+            </Link>
+          </div>
+        </div>
+      </Panel>
+    )
+  }
+
   if (result.status === 'needs_clarification') {
     const blocked = result.outcome === 'blocked'
     return (

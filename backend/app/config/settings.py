@@ -204,6 +204,54 @@ class Settings:
     #: it was issued for.
     vqa_api_key: str = field(default_factory=lambda: _env("VQA_API_KEY", "").strip())
 
+    # ---- automatic imagery acquisition -------------------------------
+    #: When a request arrives without imagery, find and download a scene for
+    #: the place the question names. Sentinel-2 L2A (optical) and Sentinel-1
+    #: RTC (radar) come from Microsoft Planetary Computer, which needs no
+    #: account; place names are resolved by OpenStreetMap's Nominatim. Turn it
+    #: off where the server must not reach the internet.
+    fetch_enabled: bool = field(default_factory=lambda: _env_bool("FETCH_ENABLED", True))
+    fetch_stac_url: str = field(
+        default_factory=lambda: _env(
+            "FETCH_STAC_URL", "https://planetarycomputer.microsoft.com/api/stac/v1"
+        ).rstrip("/")
+    )
+    #: Planetary Computer serves its files through short-lived read tokens,
+    #: issued anonymously per collection.
+    fetch_token_url: str = field(
+        default_factory=lambda: _env(
+            "FETCH_TOKEN_URL", "https://planetarycomputer.microsoft.com/api/sas/v1/token"
+        ).rstrip("/")
+    )
+    geocoder_url: str = field(
+        default_factory=lambda: _env(
+            "GEOCODER_URL", "https://nominatim.openstreetmap.org/search"
+        )
+    )
+    #: Side of the square fetched around a point (a pair of coordinates, or a
+    #: geocoded place too small to analyse on its own), in kilometres.
+    fetch_default_extent_km: int = field(
+        default_factory=lambda: _env_int("FETCH_DEFAULT_EXTENT_KM", 10)
+    )
+    #: Largest side fetched. A larger place -- a district, a state -- is cut to
+    #: a square of this size around its centre, and the answer says so.
+    fetch_max_extent_km: int = field(
+        default_factory=lambda: _env_int("FETCH_MAX_EXTENT_KM", 20)
+    )
+    #: Longest side of a fetched image in pixels. Larger areas are read from
+    #: the files' overviews at 20, 40 or 80 m rather than at 10 m. Download
+    #: time grows with the square of this, and is what a fetch spends most of.
+    fetch_max_pixels: int = field(default_factory=lambda: _env_int("FETCH_MAX_PIXELS", 1024))
+    #: Catalogue tiles cloudier than this are not considered at all.
+    fetch_max_cloud_percent: int = field(
+        default_factory=lambda: _env_int("FETCH_MAX_CLOUD_PERCENT", 60)
+    )
+    #: How far back "now" reaches when a question names no date.
+    fetch_lookback_days: int = field(default_factory=lambda: _env_int("FETCH_LOOKBACK_DAYS", 120))
+    fetch_timeout_seconds: int = field(
+        default_factory=lambda: _env_int("FETCH_TIMEOUT_SECONDS", 60)
+    )
+
     # ---- observability ---------------------------------------------
     log_level: str = field(
         default_factory=lambda: _env("LOG_LEVEL", "INFO").strip().upper()

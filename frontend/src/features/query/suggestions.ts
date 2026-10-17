@@ -70,13 +70,43 @@ const SUGGESTIONS: Suggestion[] = [
   },
 ]
 
+/**
+ * The same questions about named places, for when nothing is attached and the
+ * server fetches the imagery. Each names a place the geocoder resolves and,
+ * where it matters, a period with imagery in the archive.
+ */
+const PLACE_SUGGESTIONS: Suggestion[] = [
+  { toolId: 'ndvi', text: 'How healthy is the vegetation in Pune?', images: 1 },
+  {
+    toolId: 'land_cover_classification',
+    text: 'Classify the land cover around Nagpur.',
+    images: 1,
+  },
+  {
+    toolId: 'change_detection',
+    text: 'Has vegetation been lost around Hosur between 2019 and 2025?',
+    images: 2,
+  },
+  {
+    toolId: 'sar_analysis',
+    text: 'Find the areas affected by flooding near Kochi in August 2024.',
+    images: 1,
+  },
+  { toolId: 'object_detection', text: 'How many water bodies are around Bhopal?', images: 1 },
+  { toolId: 'satellite_vqa', text: 'Is there a river near Varanasi?', images: 1 },
+  { toolId: 'ndwi', text: 'Map the surface water around Chilika Lake.', images: 1 },
+  { toolId: 'ndbi', text: 'Where are the built-up areas in Gurugram?', images: 1 },
+]
+
 export function suggestionsFor(
   capabilities: CapabilitiesResponse | null,
   limit = 4,
+  places = false,
 ): Suggestion[] {
   if (!capabilities) return []
   const executable = new Set(capabilities.executable)
-  const available = SUGGESTIONS.filter((entry) => executable.has(entry.toolId))
+  const pool = places ? PLACE_SUGGESTIONS : SUGGESTIONS
+  const available = pool.filter((entry) => executable.has(entry.toolId))
 
   // One example per capability first, so the row shows breadth before depth.
   const seen = new Set<string>()

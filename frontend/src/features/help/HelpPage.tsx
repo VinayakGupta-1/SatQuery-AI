@@ -81,6 +81,33 @@ export function HelpPage() {
 
       <Panel title="Where to get imagery">
         <div className="sq-help">
+          {capabilities?.auto_fetch ? (
+            <>
+              <h3 className="sq-help__subhead">You do not have to supply any</h3>
+              <p>
+                Ask about a place without attaching a file and SatQuery fetches
+                the imagery itself. The place comes from the location field, from
+                coordinates in the question, or from the first place name in it,
+                looked up on OpenStreetMap. The task decides the sensor:{' '}
+                <strong>Sentinel-2</strong> optical imagery for vegetation,
+                water, built-up land and land cover; <strong>Sentinel-1</strong>{' '}
+                radar for floods, which it sees through cloud.
+              </p>
+              <p>
+                Without dates, the clearest scene of the last four months is
+                used, with cloud measured over your area rather than over the
+                whole 110 km tile. With dates - &ldquo;in August 2024&rdquo;,
+                &ldquo;between 2019 and 2025&rdquo;, &ldquo;since 2018&rdquo; -
+                scenes are taken from those periods, and a before scene is matched
+                to the season of the after scene so crops and monsoon do not read
+                as change. Areas up to 20 km across are fetched; a larger place is
+                cut to 20 km around its centre and the answer says so. Imagery
+                comes from Microsoft Planetary Computer, free and without an
+                account.
+              </p>
+              <h3 className="sq-help__subhead">Or bring your own</h3>
+            </>
+          ) : null}
           <p>
             SatQuery analyses <strong>satellite rasters</strong>, not pictures.
             A JPEG or PNG photograph carries no spectral bands and no
@@ -208,6 +235,15 @@ export function HelpPage() {
             server-generated name for the duration of the task and returns the
             result.
           </p>
+          {capabilities?.auto_fetch ? (
+            <p>
+              When SatQuery fetches imagery for you, the{' '}
+              <strong>place name in your question</strong> is sent to
+              OpenStreetMap&rsquo;s geocoder, and the area and dates to
+              Microsoft Planetary Computer&rsquo;s catalogue. Coordinates you
+              type are never geocoded.
+            </p>
+          ) : null}
           {/* Read from the service, because what leaves the backend depends on
               how the operator configured it. */}
           {capabilities?.agent_llm_enabled ? (
