@@ -47,9 +47,8 @@ in 10 m pixels — and SatQuery says why instead of guessing.
 docker compose up --build         # then open http://localhost:8080
 ```
 
-It reads `backend/.env` when there is one. The images are written for Linux
-containers but have not yet been built on a machine with Docker; CI (below)
-runs the same pinned dependencies on Linux.
+It reads `backend/.env` when there is one. CI builds both images on every
+push, starts the stack and checks that nginx serves the app and the API.
 
 **Without Docker** you need Python and Node.js (tested on Python 3.13 and Node 24; Vite needs
 Node 20.19 or newer).
@@ -271,8 +270,9 @@ npm test                          # Vitest: formatting, suggestions, request bod
 npm run lint && npm run build     # ESLint, then tsc -b and the production build
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs both backend suites and the
-frontend tests, lint and build on every push and pull request.
+GitHub Actions (`.github/workflows/ci.yml`) runs both backend suites, the
+frontend tests, lint and build, and a Docker build-and-serve check on every
+push and pull request.
 
 Questions can be asked in Hindi as well as English; month names, places and
 the analysis are read from the Hindi text even without a hosted model.

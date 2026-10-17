@@ -181,8 +181,11 @@ without files fetches it.
   - `backend/requirements-lock.txt` installs cleanly into a fresh venv,
     and all tests pass on it.
   - `backend/Dockerfile`, `frontend/Dockerfile` (with `nginx.conf`) and
-    `docker-compose.yml`. **Untested: no Docker on this machine.**
-  - `.github/workflows/ci.yml`, and an MIT `LICENSE`.
+    `docker-compose.yml`. There is no Docker on this machine, but CI builds
+    and serves them.
+  - `.github/workflows/ci.yml` has three jobs (backend on both raster
+    backends, frontend, Docker), all green on the first push (runs
+    39052690286 and 39052800456). There is also an MIT `LICENSE`.
 - **Tests:** 735 backend tests (both raster backends) plus 15 Vitest.
 
 ## 4. How to run things
@@ -272,9 +275,8 @@ never call Groq.
    - Sign up once with their own email to verify the whole flow end to end.
    - Configure custom SMTP before inviting anyone outside the Supabase
      organisation: the built-in mailer only sends to org members.
-6. **Docker and CI** were written but never run (no Docker here; CI runs on
-   the first push). Check the first CI run on GitHub and fix anything
-   Linux-specific.
+6. **Pushed to GitHub on 2026-10-17; CI is green**, including Docker.
+   Watch new runs at github.com/VinayakGupta-1/SatQuery-AI/actions.
 7. **Resolved 2026-10-17.** `.claude/settings.json` (an old permission
    allowlist) was restored rather than deleted; the user said "yes for
    everything" without picking an option.
