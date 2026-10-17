@@ -105,6 +105,12 @@ export function HelpPage() {
                 comes from Microsoft Planetary Computer, free and without an
                 account.
               </p>
+              <p>
+                Questions can be asked in Hindi too - &ldquo;पुणे में वनस्पति
+                कितनी स्वस्थ है?&rdquo; or &ldquo;अगस्त 2024 में कोच्चि के पास
+                बाढ़ प्रभावित क्षेत्र दिखाइए&rdquo; - including Hindi month
+                names. Answers are given in English.
+              </p>
               <h3 className="sq-help__subhead">Or bring your own</h3>
             </>
           ) : null}

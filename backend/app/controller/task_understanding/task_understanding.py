@@ -54,7 +54,28 @@ COUNT_PATTERN = re.compile(
     r"per cent|pixels?|metres?|meters?))"
 )
 
-FLOOD_PHRASES = ("flood", "inundat", "waterlogg", "water-logg", "submerged")
+FLOOD_PHRASES = (
+    "flood", "inundat", "waterlogg", "water-logg", "submerged",
+    # Hindi: बाढ़ (flood) with the nukta precomposed or combining, जलभराव
+    # (waterlogging), डूब (submerged).
+    "बाढ", "बाढ़", "जलभराव", "डूब",
+)
+
+#: Hindi for the analyses, checked after the English phrases. Substrings, as
+#: Hindi inflects by suffix: "वनस्पति" (vegetation), "हरियाली" (greenery),
+#: "पानी" (water), "शहरी" (urban), "भूमि आवरण" (land cover).
+HINDI_TASK_PHRASES: list[tuple[str, tuple[str, ...]]] = [
+    ("segmentation", ("भूमि आवरण", "भू-आवरण", "भू आवरण", "भूमि उपयोग", "भू-उपयोग")),
+    ("ndbi", ("शहरी", "निर्मित क्षेत्र", "इमारत", "बस्ती", "शहरीकरण")),
+    ("ndvi", ("वनस्पति", "हरियाली", "पेड", "जंगल", "फसल", "वन क्षेत्र")),
+    ("ndwi", ("पानी", "जल निकाय", "जलाशय", "सतही जल")),
+]
+
+#: Hindi words of change: बदलाव / परिवर्तन (change) on their own; कम हुई
+#: (decreased), घटी (fell), बढ़ी (grew), खो (lost), नष्ट (destroyed) when the
+#: question spans two dates.
+HINDI_CHANGE_WORDS = ("बदलाव", "परिवर्तन")
+HINDI_CHANGE_VERB_PATTERN = re.compile(r"कम\s*हु|घट|बढ|बढ़|खो|नष्ट")
 
 #: "Is there a river near Varanasi?", "Are there ships in this image?",
 #: "Does the scene show a dam?" -- a question answered by looking.
@@ -179,6 +200,10 @@ class TaskUnderstanding:
             return "change_detection"
         if CHANGE_VERB_PATTERN.search(query) and spans_two_dates(query):
             return "change_detection"
+        if any(word in query for word in HINDI_CHANGE_WORDS) or (
+            HINDI_CHANGE_VERB_PATTERN.search(query) and spans_two_dates(query)
+        ):
+            return "change_detection"
         if FUSION_PATTERN.search(query):
             return "optical_sar_fusion"
         if CAPTION_PATTERN.search(query):
@@ -189,13 +214,14 @@ class TaskUnderstanding:
             return "sar_analysis"
         if any(phrase in query for phrase in FLOOD_PHRASES):
             return "flood_mapping"
-        for task, phrases in TASK_PHRASES:
+        for task, phrases in TASK_PHRASES + HINDI_TASK_PHRASES:
             if any(phrase in query for phrase in phrases):
                 return task
         # Last: a yes/no question about what is in the scene is for the vision
         # model, as the hosted reader's prompt also says. Every specific
         # phrase above wins over it.
-        if YES_NO_PATTERN.search(query):
+        if YES_NO_PATTERN.search(query) or query.lstrip().startswith("क्या "):
+            # "क्या यहाँ कोई नदी है?" -- "is there a river here?"
             return "image_analysis"
         return None
 

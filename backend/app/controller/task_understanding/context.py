@@ -60,6 +60,16 @@ MONTH_YEAR_PATTERN = re.compile(
     r"\.?,?\s+" + _YEAR + r"(?!\d)",
     re.IGNORECASE,
 )
+#: Hindi month names, in the spellings people type: with and without the
+#: nukta (precomposed or combining), and both common forms of the anusvara.
+HINDI_MONTHS = {
+    "जनवरी": 1, "फरवरी": 2, "फ़रवरी": 2, "फ़रवरी": 2, "मार्च": 3, "अप्रैल": 4,
+    "अप्रेल": 4, "मई": 5, "जून": 6, "जुलाई": 7, "अगस्त": 8, "सितंबर": 9, "सितम्बर": 9,
+    "अक्टूबर": 10, "अक्तूबर": 10, "नवंबर": 11, "नवम्बर": 11, "दिसंबर": 12, "दिसम्बर": 12,
+}
+HINDI_MONTH_YEAR_PATTERN = re.compile(
+    "(" + "|".join(sorted(HINDI_MONTHS, key=len, reverse=True)) + r")\s*,?\s*" + _YEAR + r"(?!\d)"
+)
 OPEN_START = re.compile(r"\b(since|after|from)\s*$", re.IGNORECASE)
 OPEN_END = re.compile(r"\b(before|until|till|up to|prior to|by)\s*$", re.IGNORECASE)
 
@@ -81,6 +91,15 @@ def _mentions(query: str) -> list[tuple[int, int, date, date]]:
         if not free(*match.span()):
             continue
         month = MONTHS[match.group(1)[:3].lower()]
+        year = int(match.group(2))
+        last = calendar.monthrange(year, month)[1]
+        found.append((match.start(), match.end(), date(year, month, 1), date(year, month, last)))
+        taken.append(match.span())
+
+    for match in HINDI_MONTH_YEAR_PATTERN.finditer(query):
+        if not free(*match.span()):
+            continue
+        month = HINDI_MONTHS[match.group(1)]
         year = int(match.group(2))
         last = calendar.monthrange(year, month)[1]
         found.append((match.start(), match.end(), date(year, month, 1), date(year, month, last)))
@@ -267,9 +286,38 @@ def _named_region(query: str) -> AreaOfInterest | None:
     return None
 
 
+#: A Hindi place name is the word before "में" (in), "के पास" (near),
+#: "के आसपास" (around) or "के निकट" (close to).
+HINDI_PLACE_PATTERN = re.compile(
+    r"([\u0900-\u0963\u0966-\u097F]+)\s+(?:में|के\s+पास|के\s+आसपास|के\s+आस-पास|के\s+निकट)"
+)
+#: Landforms named by the word before them: झील (lake), नदी (river), बांध
+#: (dam), जलाशय (reservoir), घाटी (valley), तट (coast), द्वीप (island),
+#: पहाड़ी (hill), सरोवर (lake), वन (forest).
+HINDI_LANDFORMS = {"झील", "नदी", "बांध", "बाँध", "जलाशय", "घाटी", "तट", "द्वीप", "पहाड़ी", "सरोवर", "वन"}
+HINDI_PREVIOUS_WORD = re.compile(r"([ऀ-ॣ०-ॿ]+)\s+$")
+#: Words that sit before those postpositions without being places.
+HINDI_NOT_PLACES = {
+    "क्षेत्र", "क्षेत्रों", "इलाके", "इलाका", "इलाकों", "छवि", "तस्वीर", "चित्र", "दृश्य",
+    "शहर", "जिले", "ज़िले", "राज्य", "बीच", "साल", "वर्ष", "महीने", "दौरान", "इस", "उस",
+    "जगह", "भाग", "हिस्से", *HINDI_MONTHS,
+}
+
+
 def extract_locations(query: str) -> list[str]:
     """Place names as written, in order, without duplicates."""
     places: list[str] = []
+    for match in HINDI_PLACE_PATTERN.finditer(query):
+        name = match.group(1)
+        if name in HINDI_LANDFORMS:
+            # "चिल्का झील" -- the lake is named by the word before it.
+            before = HINDI_PREVIOUS_WORD.search(query[: match.start()])
+            if before and before.group(1) not in HINDI_NOT_PLACES:
+                name = f"{before.group(1)} {name}"
+            else:
+                continue
+        if name not in HINDI_NOT_PLACES and name not in places:
+            places.append(name)
     for match in PLACE_PATTERN.finditer(query):
         name = match.group(1).strip()
         # Drop acronyms and vocabulary that only looks like a place.
@@ -311,7 +359,7 @@ FUSION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 SAR_PATTERN = re.compile(
-    r"\bsar\b|\bradar\b|backscatter|sentinel[- ]?1\b|polari[sz]ation|\brisat\b", re.IGNORECASE
+    r"\bsar\b|\bradar\b|backscatter|sentinel[- ]?1\b|polari[sz]ation|\brisat\b|रडार", re.IGNORECASE
 )
 OPTICAL_PATTERN = re.compile(
     r"\boptical\b|\bmultispectral\b|sentinel[- ]?2\b|\blandsat\b|\btrue[- ]colou?r\b|"
