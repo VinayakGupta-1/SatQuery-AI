@@ -272,8 +272,6 @@ Every answer comes back grounded:
   It is a reliability indicator, not a calibrated probability.
 - **Execution trace** — every stage as it ran, timed, with the tool's own steps.
 
-- [System_Architecture.md](System_Architecture.md) — the design and the reasons for it
-- [System_diagram.md](System_diagram.md) — the layers at a glance
 - [frontend/README.md](frontend/README.md) — the workspace's structure and conventions
 
 ## Tests

@@ -399,7 +399,7 @@ them. Each fix has a test.
   - The pins are `transformers==4.51.3`, `peft==0.15.2`, `accelerate==1.6.0`.
 - Docs: `README.md` (capabilities, grounded answers, benchmark, fine-tuning,
   measured free-tier budget), `backend/.env.example`, the tree in
-  `System_Architecture.md` §14, and `.gitignore` (evaluation_reports,
+  `System_Architecture.md` §14 (since deleted), and `.gitignore` (evaluation_reports,
   `work/`, `models/`).
 
 ## 8. Traps and conventions
