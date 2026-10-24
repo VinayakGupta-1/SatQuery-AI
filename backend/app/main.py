@@ -24,6 +24,7 @@ from app.api import tasks as task_routes
 from app.api import validation as system_routes
 from app.api.errors import ErrorResponse, register_error_handlers
 from app.config.logging_config import configure_logging, get_logger
+from app.config.secrets import malformed_key_problem
 from app.config.settings import get_settings
 from app.storage.artifacts import get_artifact_store
 from app.tools.binding import implemented_tool_ids, verify_bindings
@@ -125,6 +126,10 @@ def create_app() -> FastAPI:
     app.include_router(task_routes.router)
     app.include_router(task_routes.analysis_router)
     app.include_router(progress_routes.router)
+
+    key_problem = malformed_key_problem(settings.agent_api_key, "SATQUERY_AGENT_API_KEY")
+    if key_problem:
+        logger.warning(key_problem + " The hosted models will refuse every request.")
 
     serves_workspace = bool(settings.frontend_dist) and mount_frontend(
         app, settings.frontend_dist

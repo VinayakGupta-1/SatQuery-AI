@@ -29,6 +29,7 @@ import urllib.request
 from typing import Any
 
 from app import USER_AGENT
+from app.config.secrets import check_key
 from app.config.settings import Settings, get_settings
 from app.tools.base import ToolExecutionError
 
@@ -79,6 +80,7 @@ def post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int) -> 
     at once, saying how long.
     """
     headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
+    check_key(api_key, "SATQUERY_AGENT_API_KEY", ToolExecutionError)
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     body = json.dumps(payload).encode("utf-8")

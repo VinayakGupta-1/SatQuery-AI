@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.config.secrets import redact
 from app.registry.registry import get_tool
 from app.tools.base import ToolExecutionError, ToolOutput, ToolRequest, UnsupportedRequestError
 from app.tools.binding import (
@@ -55,9 +56,9 @@ class ExecutionOrchestrator:
                 request.output_directory,
             )
         except (ToolNotImplementedError, UnsupportedRequestError) as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=str(exc), execution_metadata=metadata)
+            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=redact(str(exc)), execution_metadata=metadata)
         except Exception as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=str(exc), execution_metadata=metadata)
+            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=redact(str(exc)), execution_metadata=metadata)
 
         if isinstance(output, ToolOutput):
             metadata.update(output.metadata)
@@ -142,9 +143,9 @@ class ExecutionOrchestrator:
                 )
             )
         except UnsupportedRequestError as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=str(exc), execution_metadata=self._metadata(tool, request))
+            return ExecutionResult(tool_id=tool.tool_id, status="blocked", error=redact(str(exc)), execution_metadata=self._metadata(tool, request))
         except ToolExecutionError as exc:
-            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=str(exc), execution_metadata=self._metadata(tool, request))
+            return ExecutionResult(tool_id=tool.tool_id, status="failed", error=redact(str(exc)), execution_metadata=self._metadata(tool, request))
 
         return ExecutionResult(
             tool_id=tool.tool_id,

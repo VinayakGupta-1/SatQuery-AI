@@ -25,6 +25,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.ingestion import IngestionError
 from app.config.logging_config import get_logger
+from app.config.secrets import redact
 from app.storage.artifacts import StorageError
 from app.tools.base import ToolExecutionError
 
@@ -94,7 +95,7 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(IngestionError)
     async def _ingestion(request: Request, exc: IngestionError) -> JSONResponse:
         """An upload that could not be accepted. The message is user-facing."""
-        return _json(400, "invalid_upload", str(exc))
+        return _json(400, "invalid_upload", redact(str(exc)))
 
     @app.exception_handler(StorageError)
     async def _storage(request: Request, exc: StorageError) -> JSONResponse:
@@ -116,7 +117,7 @@ def register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: ToolExecutionError
     ) -> JSONResponse:
         """A tool refused to produce a result. Its message explains why."""
-        return _json(422, "execution_error", str(exc))
+        return _json(422, "execution_error", redact(str(exc)))
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:

@@ -27,6 +27,7 @@ from app.agents.providers import (
 )
 from app.agents.schemas import AgentTaskPlan, GuardDecision
 from app.config.logging_config import get_logger
+from app.config.secrets import redact
 from app.config.settings import Settings, get_settings
 
 logger = get_logger("agent")
@@ -109,13 +110,14 @@ class QueryAgent:
         except (ProviderError, ValueError) as error:
             if not self.settings.agent_fallback_to_rules:
                 raise
+            reason = redact(str(error))
             logger.warning(
                 "provider failed; falling back to rules",
-                extra={"provider": self.provider.name, "error": str(error)},
+                extra={"provider": self.provider.name, "error": reason},
             )
             notes.append(
                 f"The '{self.provider.name}' provider failed "
-                f"({error}); deterministic keyword understanding was used instead."
+                f"({reason}); deterministic keyword understanding was used instead."
             )
             plan = self.fallback.understand(query)
 

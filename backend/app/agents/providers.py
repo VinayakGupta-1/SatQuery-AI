@@ -35,6 +35,7 @@ from typing import Any
 from app import USER_AGENT
 from app.agents.guard import allowed_tool_ids
 from app.agents.schemas import AgentTaskPlan
+from app.config.secrets import check_key
 from app.tools.binding import get_implementation
 from app.config.logging_config import get_logger
 from app.controller.task_classification.task_classification import TaskClassifier
@@ -386,6 +387,7 @@ class HostedProvider(QueryUnderstandingProvider):
             }
         ).encode("utf-8")
 
+        check_key(self._api_key, "SATQUERY_AGENT_API_KEY", ProviderError)
         request = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=payload,
