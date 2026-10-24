@@ -270,7 +270,7 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 742 tests
+python -m pytest                                   # 754 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```

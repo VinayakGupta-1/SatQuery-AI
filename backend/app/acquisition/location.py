@@ -203,8 +203,20 @@ def builtin_place(name: str) -> dict | None:
     return dict(entry, note=BUILTIN_NOTE) if entry else None
 
 
+def _names_every_word(name: str, label: str) -> bool:
+    """Whether every word of ``name`` appears, whole, in ``label``."""
+    words = set(re.findall(r"\w+", label.lower()))
+    return all(word in words for word in re.findall(r"\w+", name.lower()))
+
+
 def photon_results(name: str, settings: Settings) -> list[dict]:
-    """Photon's matches for ``name``, in Nominatim's result shape."""
+    """Photon's matches for ``name``, in Nominatim's result shape.
+
+    Photon searches fuzzily: asked for "Chilika" it offers Chilikar, in
+    Russia. For a name in Latin script, a result is kept only when it
+    contains every word of the name. (Photon answers in English, so a
+    Devanagari name cannot be checked this way and is taken as found.)
+    """
     answer = request_json(
         settings.geocoder_fallback_url,
         params={"q": name, "limit": 5, "lang": "en"},
@@ -221,6 +233,8 @@ def photon_results(name: str, settings: Settings) -> list[dict]:
         # and is sized like any other point later.
         west, north, east, south = props.get("extent") or (lon, lat, lon, lat)
         label = [props.get(k) for k in ("name", "city", "state", "country")]
+        if name.isascii() and not _names_every_word(name, str(props.get("name") or "")):
+            continue
         results.append({
             "category": props.get("osm_key"),
             "lat": lat,
@@ -235,8 +249,8 @@ def geocode(name: str, settings: Settings) -> dict:
     """Look a place name up and return the best match.
 
     Nominatim is asked first; when it refuses (it limits requests per IP
-    address) or cannot be reached, Photon is asked instead, and when that
-    fails too, the built-in list of Indian places. Nominatim's usage
+    address) or cannot be reached, the built-in list of Indian places is
+    consulted, then Photon. Nominatim's usage
     policy asks for at most one request a second and an identifying
     User-Agent; both are honoured, and answers are cached for the life of the
     process.
@@ -257,14 +271,17 @@ def geocode(name: str, settings: Settings) -> dict:
                 timeout=min(settings.fetch_timeout_seconds, GEOCODE_TIMEOUT),
             )
         except AcquisitionError as refused:
+            # The built-in entries are Nominatim's own answers, so they come
+            # before Photon's fuzzier search.
+            builtin = builtin_place(name)
+            if builtin is not None:
+                _geocode_cache[key] = builtin
+                return builtin
             if not settings.geocoder_fallback_url:
                 raise
             try:
                 results = photon_results(name, settings)
             except AcquisitionError as also_refused:
-                builtin = builtin_place(name)
-                if builtin is not None:
-                    return builtin
                 raise AcquisitionError(
                     f"The place search services are busy ({refused} {also_refused}) "
                     "Try again in a minute, or give coordinates such as "

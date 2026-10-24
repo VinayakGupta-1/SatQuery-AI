@@ -207,21 +207,41 @@ def test_photon_answers_when_nominatim_refuses(fetch_settings, monkeypatch):
             raise AcquisitionError("nominatim.openstreetmap.org answered HTTP 429; try again shortly.")
         assert "photon" in url
         return {"features": [
-            {"geometry": {"coordinates": [73.85, 18.52]},
-             "properties": {"osm_key": "place", "name": "Pune", "state": "Maharashtra", "country": "India"}},
-            {"geometry": {"coordinates": [73.92, 18.64]},
-             "properties": {"osm_key": "boundary", "name": "Pune District", "state": "Maharashtra",
-                            "country": "India", "extent": [73.32, 19.39, 75.16, 17.89]}},
+            {"geometry": {"coordinates": [73.40, 18.75]},
+             "properties": {"osm_key": "place", "name": "Lonavala", "state": "Maharashtra", "country": "India"}},
+            {"geometry": {"coordinates": [73.41, 18.76]},
+             "properties": {"osm_key": "boundary", "name": "Lonavala Municipal Council", "state": "Maharashtra",
+                            "country": "India", "extent": [73.35, 18.80, 73.45, 18.70]}},
         ]}
 
     monkeypatch.setattr(location, "request_json", web)
     monkeypatch.setattr(location, "_geocode_cache", {})
     monkeypatch.setattr(location, "_last_geocode", 0.0)
-    query = "How healthy is the vegetation in Pune?"
+    query = "How healthy is the vegetation in Lonavala?"
     area = resolve_area(None, query, extract_context(query), fetch_settings)
-    assert area.name == "Pune, Maharashtra, India"
+    assert area.name == "Lonavala, Maharashtra, India"
     west, south, east, north = area.bbox
-    assert west < 73.85 < east and south < 18.52 < north
+    assert west < 73.40 < east and south < 18.75 < north
+
+
+def test_photon_lookalikes_are_not_taken_for_the_place(fetch_settings, monkeypatch):
+    def web(url, params=None, body=None, timeout=60):
+        if "nominatim" in url:
+            raise AcquisitionError("nominatim.openstreetmap.org answered HTTP 429; try again shortly.")
+        return {"features": [
+            {"geometry": {"coordinates": [47.4, 42.6]},
+             "properties": {"osm_key": "place", "name": "Chilikar", "state": "Dagestan", "country": "Russia"}},
+        ]}
+
+    monkeypatch.setattr(location, "request_json", web)
+    monkeypatch.setattr(location, "_geocode_cache", {})
+    monkeypatch.setattr(location, "_last_geocode", 0.0)
+    with pytest.raises(AcquisitionError) as raised:
+        resolve_area("Chilikx", "NDVI?", extract_context("NDVI?"), fetch_settings)
+    assert raised.value.status == "needs_location"
+    # A name the built-in list knows never reaches Photon at all.
+    area = resolve_area("Chilika", "NDVI?", extract_context("NDVI?"), fetch_settings)
+    assert area.name.startswith("Chilika Lake")
 
 
 def test_both_geocoders_refusing_suggests_coordinates(fetch_settings, monkeypatch):

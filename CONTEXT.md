@@ -3,7 +3,7 @@
 > **For the next Claude session.** The user will say "read the context file and
 > continue". This file says what the project is, what exists, what was done in
 > earlier sessions, what is still open, and the traps to avoid. Last updated
-> **2026-10-17**, after the audit and the Supabase work (sections 3a and 3b).
+> **2026-10-24**, after the public deployment on Render (section 3c).
 > Check `git log` first: anything newer happened after this file was written.
 
 ---
@@ -188,6 +188,45 @@ without files fetches it.
     39052690286 and 39052800456). There is also an MIT `LICENSE`.
 - **Tests:** 735 backend tests (both raster backends) plus 15 Vitest.
 
+## 3c. Live on Render (2026-10-24)
+
+**Public URL: https://satquery-ai-s55c.onrender.com** (Render free plan,
+Singapore, owned by the user's Render account vinayakgupta955@gmail.com;
+service `srv-dbe9im7b9u1s738u7bd0`, blueprint `satquery`). It auto-deploys on
+every push to `main`. It runs open (no sign-in) with the Groq key as a
+Render secret and `SATQUERY_VQA_ENABLED=true`. The free instance sleeps
+after 15 minutes idle (about 50 s to wake) and has 512 MB of RAM; results
+live in memory and vanish on every restart or deploy.
+
+- **One container:** the root `Dockerfile` builds the workspace and serves
+  it from uvicorn (`SATQUERY_FRONTEND_DIST`, `app/web.py`) on `$PORT`.
+  Browser page loads of `/results/<id>` and `/capabilities` get the app
+  (Accept: text/html), API calls get JSON. `render.yaml` is the blueprint.
+- **Hugging Face was tried first:** Docker Spaces now need PRO (402).
+  `deploy/huggingface/` (README + `deploy.py`) is kept for a PRO account.
+  The user is logged in to HF as `vinayakg1`; no Space was created.
+- **libexpat:** `python:3.13-slim` no longer ships it; rasterio failed to
+  import and raster I/O fell back to builtin silently, so fetching could
+  not work in either Docker image. Both Dockerfiles install `libexpat1`
+  and CI asserts `raster_backend == rasterio`.
+- **Key leak (fixed, `6d47ff8`):** the Groq key was pasted into Render with
+  the next `.env` line attached; http.client's "Invalid header value"
+  error quoted it into the public answer, agent notes and trace.
+  `app/config/secrets.py` now refuses a key with whitespace before any
+  request (and warns at startup), and `redact()` scrubs every exception
+  message that can reach a response. The user revoked that key and set a
+  new one. Never ask the user to copy keys from `.env` into a dashboard:
+  copy from the provider's page.
+- **Geocoding (`82b1cf1`):** Nominatim answered 429 to Render's shared IP.
+  Now Nominatim, then `app/acquisition/places.json` (118 Indian names incl.
+  Hindi, Nominatim's own answers built by `scripts/build_gazetteer.py`;
+  Sundarbans left out, Nominatim has only a resort), then Photon
+  (`SATQUERY_GEOCODER_FALLBACK_URL`), whose fuzzy matches must contain
+  every word of a Latin-script name ("Chilika" had become Chilikar,
+  Russia). 15 s per geocoder.
+- **CI:** five jobs now, including the single image.
+- **Tests:** 754 backend (both raster backends) + 15 Vitest.
+
 ## 4. How to run things
 
 ```bash
@@ -275,7 +314,8 @@ never call Groq.
    - Sign up once with their own email to verify the whole flow end to end.
    - Configure custom SMTP before inviting anyone outside the Supabase
      organisation: the built-in mailer only sends to org members.
-6. **Pushed to GitHub on 2026-10-17; CI is green**, including Docker.
+6. **Live at https://satquery-ai-s55c.onrender.com since 2026-10-24**
+   (section 3c). Pushed to GitHub on 2026-10-17; CI is green, including Docker.
    Watch new runs at github.com/VinayakGupta-1/SatQuery-AI/actions.
 7. **Resolved 2026-10-17.** `.claude/settings.json` (an old permission
    allowlist) was restored rather than deleted; the user said "yes for
