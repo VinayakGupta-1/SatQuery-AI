@@ -129,6 +129,6 @@ in a virtual environment outside the OneDrive folder:
 ```powershell
 py -3.12 -m venv $HOME\.satquery-serve
 $HOME\.satquery-serve\Scripts\python -m pip install torch --index-url https://download.pytorch.org/whl/cu126
-$HOME\.satquery-serve\Scripts\python -m pip install -r finetuneequirements-serve.txt bitsandbytes
+$HOME\.satquery-serve\Scripts\python -m pip install -r finetune\requirements-serve.txt bitsandbytes
 $HOME\.satquery-serve\Scripts\python finetune\serve.py --model-dir models\satquery-qwen2vl-rsvqa --load-in-4bit
 ```
