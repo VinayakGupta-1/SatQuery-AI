@@ -95,6 +95,10 @@ class Settings:
     #: in memory, so nothing from an earlier process can be served again. 0
     #: keeps everything.
     retention_hours: int = field(default_factory=lambda: _env_int("RETENTION_HOURS", 24))
+    #: A built workspace (``frontend/dist``) to serve from this process, for
+    #: single-container deployments with no nginx in front. Empty serves the
+    #: API only.
+    frontend_dist: str = field(default_factory=lambda: _env("FRONTEND_DIST", "").strip())
     allowed_extensions: tuple[str, ...] = DEFAULT_ALLOWED_EXTENSIONS
 
     #: Browser origins permitted to call the API. The default suits a local

@@ -50,6 +50,20 @@ docker compose up --build         # then open http://localhost:8080
 It reads `backend/.env` when there is one. CI builds both images on every
 push, starts the stack and checks that nginx serves the app and the API.
 
+**Publicly, on a free Hugging Face Space.** The root `Dockerfile` is a single
+image that serves the workspace and the API on one port (7860, or `$PORT`):
+
+```bash
+hf auth login                                  # once, with a write token
+python deploy/huggingface/deploy.py            # -> https://<you>-satquery-ai.hf.space
+python deploy/huggingface/deploy.py --with-models   # also copy the Groq key as a Space secret
+```
+
+Only git-tracked files are uploaded, so `backend/.env` never leaves the
+machine. The public demo runs without sign-in. Visitors share the Groq key's
+free-tier quota when `--with-models` is used, and the deterministic tools cost
+nothing. The same image runs on Render, Railway or any VM.
+
 **Without Docker** you need Python and Node.js (tested on Python 3.13 and Node 24; Vite needs
 Node 20.19 or newer).
 
@@ -254,7 +268,7 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 735 tests
+python -m pytest                                   # 742 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```
@@ -298,4 +312,6 @@ backend/
 frontend/         React + TypeScript workspace
 finetune/         Kaggle notebook to fine-tune the vision model, and its server
 presentation/     SIH deck and the scripts that build it
+deploy/           Hugging Face Space: its README and the deploy script
+Dockerfile        single-container image (workspace + API on one port)
 ```

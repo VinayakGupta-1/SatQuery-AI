@@ -75,3 +75,28 @@ jobs:
       - name: Stop
         if: always()
         run: docker compose down -v
+
+  single-image:
+    name: Single-container image (Hugging Face Space) builds and serves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t satquery .
+      - name: Start
+        run: docker run -d --name satquery -p 7860:7860 satquery
+      - name: The workspace and the API answer on one port
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:7860/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:7860/api/health
+          curl -fsS http://localhost:7860/ | grep -q '<div id="root">'
+          # Pages that share a path with an API alias still load the app.
+          curl -fsS -H 'Accept: text/html' http://localhost:7860/results/anything | grep -q '<div id="root">'
+          curl -fsS -H 'Accept: text/html' http://localhost:7860/capabilities | grep -q '<div id="root">'
+          curl -fsS http://localhost:7860/capabilities | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['executable'], d; print(len(d['executable']), 'capabilities')"
+      - name: Logs on failure
+        if: failure()
+        run: docker logs satquery

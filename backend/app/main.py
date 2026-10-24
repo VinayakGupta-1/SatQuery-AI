@@ -28,6 +28,7 @@ from app.config.settings import get_settings
 from app.storage.artifacts import get_artifact_store
 from app.tools.binding import implemented_tool_ids, verify_bindings
 from app.tools.raster.io import backend_report
+from app.web import mount_frontend
 
 logger = get_logger("startup")
 
@@ -125,6 +126,15 @@ def create_app() -> FastAPI:
     app.include_router(task_routes.analysis_router)
     app.include_router(progress_routes.router)
 
+    serves_workspace = bool(settings.frontend_dist) and mount_frontend(
+        app, settings.frontend_dist
+    )
+    if settings.frontend_dist and not serves_workspace:
+        logger.warning(
+            "No workspace build found; serving the API only",
+            extra={"frontend_dist": settings.frontend_dist},
+        )
+
     logger.info(
         "SatQuery started",
         extra={
@@ -133,6 +143,7 @@ def create_app() -> FastAPI:
             "raster_backend": backend_report()["raster_backend"],
             "auto_fetch": settings.fetch_enabled,
             "sign_in": "supabase" if settings.auth_enabled else "open",
+            "serves_workspace": serves_workspace,
             "purged_tasks": purged,
         },
     )
