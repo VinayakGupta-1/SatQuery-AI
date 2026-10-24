@@ -44,6 +44,10 @@ def test_the_root_and_app_routes_load_the_workspace(client):
         assert response.headers["cache-control"] == "no-cache"
 
 
+def test_the_root_loads_the_workspace_whatever_is_accepted(client):
+    assert "id=root" in client.get("/", headers={"accept": "*/*"}).text
+
+
 def test_pages_that_share_a_path_with_the_api_load_the_workspace(client):
     # A reload of /results/<id> or /capabilities must not show raw JSON.
     assert "id=root" in client.get("/results/abc", headers=HTML).text

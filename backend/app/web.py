@@ -59,7 +59,7 @@ def mount_frontend(app: FastAPI, dist_dir: str) -> bool:
                 response.headers["Cache-Control"] = IMMUTABLE
             return response
 
-        if "text/html" in request.headers.get("accept", ""):
+        if path == "/" or "text/html" in request.headers.get("accept", ""):
             # index.html names the current hashed assets, so it must not be
             # cached across deploys.
             return FileResponse(index, headers={"Cache-Control": "no-cache"})
