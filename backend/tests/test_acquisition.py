@@ -201,6 +201,57 @@ def test_place_names_are_geocoded_and_large_places_cut_to_the_limit(fetch_settin
     assert "20 km square" in area.notes[0]
 
 
+def test_photon_answers_when_nominatim_refuses(fetch_settings, monkeypatch):
+    def web(url, params=None, body=None, timeout=60):
+        if "nominatim" in url:
+            raise AcquisitionError("nominatim.openstreetmap.org answered HTTP 429; try again shortly.")
+        assert "photon" in url
+        return {"features": [
+            {"geometry": {"coordinates": [73.85, 18.52]},
+             "properties": {"osm_key": "place", "name": "Pune", "state": "Maharashtra", "country": "India"}},
+            {"geometry": {"coordinates": [73.92, 18.64]},
+             "properties": {"osm_key": "boundary", "name": "Pune District", "state": "Maharashtra",
+                            "country": "India", "extent": [73.32, 19.39, 75.16, 17.89]}},
+        ]}
+
+    monkeypatch.setattr(location, "request_json", web)
+    monkeypatch.setattr(location, "_geocode_cache", {})
+    monkeypatch.setattr(location, "_last_geocode", 0.0)
+    query = "How healthy is the vegetation in Pune?"
+    area = resolve_area(None, query, extract_context(query), fetch_settings)
+    assert area.name == "Pune, Maharashtra, India"
+    west, south, east, north = area.bbox
+    assert west < 73.85 < east and south < 18.52 < north
+
+
+def test_both_geocoders_refusing_suggests_coordinates(fetch_settings, monkeypatch):
+    def web(url, params=None, body=None, timeout=60):
+        raise AcquisitionError(f"{url.split('/')[2]} answered HTTP 429; try again shortly.")
+
+    monkeypatch.setattr(location, "request_json", web)
+    monkeypatch.setattr(location, "_geocode_cache", {})
+    monkeypatch.setattr(location, "_last_geocode", 0.0)
+    with pytest.raises(AcquisitionError) as raised:
+        resolve_area("Nowhereville", "NDVI?", extract_context("NDVI?"), fetch_settings)
+    assert "18.52, 73.85" in str(raised.value)
+    assert "photon.komoot.io" in str(raised.value)
+
+
+@pytest.mark.parametrize("place", ["Pune", "pune", "पुणे"])
+def test_well_known_places_work_when_both_geocoders_refuse(fetch_settings, monkeypatch, place):
+    def web(url, params=None, body=None, timeout=60):
+        raise AcquisitionError(f"{url.split('/')[2]} answered HTTP 429; try again shortly.")
+
+    monkeypatch.setattr(location, "request_json", web)
+    monkeypatch.setattr(location, "_geocode_cache", {})
+    monkeypatch.setattr(location, "_last_geocode", 0.0)
+    area = resolve_area(place, "NDVI?", extract_context("NDVI?"), fetch_settings)
+    assert area.name.startswith("Pune, ")
+    assert "built-in list" in area.notes[0]
+    west, south, east, north = area.bbox
+    assert west < 73.85 < east and south < 18.52 < north
+
+
 def test_area_features_are_preferred_to_points():
     station = {"category": "railway", "display_name": "Hosur station"}
     town = {"category": "boundary", "display_name": "Hosur"}

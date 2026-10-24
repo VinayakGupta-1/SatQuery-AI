@@ -250,6 +250,15 @@ class Settings:
             "GEOCODER_URL", "https://nominatim.openstreetmap.org/search"
         )
     )
+    #: Asked when Nominatim refuses or cannot be reached. Nominatim limits
+    #: requests per IP address, and a cloud host's shared address is often
+    #: over that limit. Photon searches the same OpenStreetMap data and needs
+    #: no account. Empty disables the fallback.
+    geocoder_fallback_url: str = field(
+        default_factory=lambda: _env(
+            "GEOCODER_FALLBACK_URL", "https://photon.komoot.io/api/"
+        ).strip()
+    )
     #: Side of the square fetched around a point (a pair of coordinates, or a
     #: geocoded place too small to analyse on its own), in kilometres.
     fetch_default_extent_km: int = field(

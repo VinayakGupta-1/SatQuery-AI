@@ -14,7 +14,9 @@ in seconds. Either adjustment is recorded as a note.
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
 import threading
 import time
@@ -166,6 +168,18 @@ def describe_point(lon: float, lat: float) -> str:
 #: ranks Hosur railway station above Hosur town; the town is what was meant.
 AREA_CATEGORIES = {"place", "boundary", "natural", "waterway", "landuse", "leisure", "water"}
 
+#: Seconds each geocoder is given. Short, so a stuck one hands over quickly.
+GEOCODE_TIMEOUT = 15
+
+#: Well-known Indian places, from Nominatim (scripts/build_gazetteer.py): the
+#: answer of last resort when both services refuse.
+BUILTIN_PLACES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "places.json")
+BUILTIN_NOTE = (
+    "The place search services were busy, so the location came from "
+    "SatQuery's built-in list of Indian places."
+)
+_builtin_places: dict[str, dict] | None = None
+
 _geocode_cache: dict[str, dict] = {}
 _geocode_lock = threading.Lock()
 _last_geocode = 0.0
@@ -179,12 +193,53 @@ def best_match(results: list[dict]) -> dict:
     return results[0]
 
 
-def geocode(name: str, settings: Settings) -> dict:
-    """Look a place name up in Nominatim and return the best match.
+def builtin_place(name: str) -> dict | None:
+    """The built-in entry for ``name``, or None."""
+    global _builtin_places
+    if _builtin_places is None:
+        with open(BUILTIN_PLACES_PATH, encoding="utf-8") as handle:
+            _builtin_places = json.load(handle)
+    entry = _builtin_places.get(name.strip().lower())
+    return dict(entry, note=BUILTIN_NOTE) if entry else None
 
-    Nominatim's usage policy asks for at most one request a second and an
-    identifying User-Agent; both are honoured, and answers are cached for the
-    life of the process.
+
+def photon_results(name: str, settings: Settings) -> list[dict]:
+    """Photon's matches for ``name``, in Nominatim's result shape."""
+    answer = request_json(
+        settings.geocoder_fallback_url,
+        params={"q": name, "limit": 5, "lang": "en"},
+        timeout=min(settings.fetch_timeout_seconds, GEOCODE_TIMEOUT),
+    )
+    results = []
+    for feature in (answer or {}).get("features") or []:
+        props = feature.get("properties") or {}
+        try:
+            lon, lat = (float(v) for v in feature["geometry"]["coordinates"][:2])
+        except (KeyError, TypeError, ValueError):
+            continue
+        # Photon's extent is [west, north, east, south]; a point has none,
+        # and is sized like any other point later.
+        west, north, east, south = props.get("extent") or (lon, lat, lon, lat)
+        label = [props.get(k) for k in ("name", "city", "state", "country")]
+        results.append({
+            "category": props.get("osm_key"),
+            "lat": lat,
+            "lon": lon,
+            "boundingbox": [south, north, west, east],
+            "display_name": ", ".join(dict.fromkeys(str(p) for p in label if p)),
+        })
+    return results
+
+
+def geocode(name: str, settings: Settings) -> dict:
+    """Look a place name up and return the best match.
+
+    Nominatim is asked first; when it refuses (it limits requests per IP
+    address) or cannot be reached, Photon is asked instead, and when that
+    fails too, the built-in list of Indian places. Nominatim's usage
+    policy asks for at most one request a second and an identifying
+    User-Agent; both are honoured, and answers are cached for the life of the
+    process.
     """
     global _last_geocode
     key = name.strip().lower()
@@ -195,11 +250,26 @@ def geocode(name: str, settings: Settings) -> dict:
         if wait > 0:
             time.sleep(wait)
         _last_geocode = time.monotonic()
-        results = request_json(
-            settings.geocoder_url,
-            params={"q": name, "format": "jsonv2", "limit": 5, "accept-language": "en"},
-            timeout=settings.fetch_timeout_seconds,
-        )
+        try:
+            results = request_json(
+                settings.geocoder_url,
+                params={"q": name, "format": "jsonv2", "limit": 5, "accept-language": "en"},
+                timeout=min(settings.fetch_timeout_seconds, GEOCODE_TIMEOUT),
+            )
+        except AcquisitionError as refused:
+            if not settings.geocoder_fallback_url:
+                raise
+            try:
+                results = photon_results(name, settings)
+            except AcquisitionError as also_refused:
+                builtin = builtin_place(name)
+                if builtin is not None:
+                    return builtin
+                raise AcquisitionError(
+                    f"The place search services are busy ({refused} {also_refused}) "
+                    "Try again in a minute, or give coordinates such as "
+                    "'18.52, 73.85'."
+                ) from also_refused
         if not isinstance(results, list) or not results:
             raise AcquisitionError(
                 f"No place called '{name}' was found. Check the spelling, add the "
@@ -222,6 +292,8 @@ def _geocoded_area(name: str, settings: Settings, source: str) -> ResolvedArea:
         ) from error
     display = str(match.get("display_name") or name)
     bbox, notes = fit_extent([west, south, east, north], (lon, lat), settings, display.split(",")[0])
+    if match.get("note"):
+        notes.insert(0, match["note"])
     return ResolvedArea(bbox=bbox, name=display, source=source, notes=notes)
 
 

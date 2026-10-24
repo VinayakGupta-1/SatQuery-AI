@@ -1,0 +1,1418 @@
+{
+ "agartala": {
+  "boundingbox": [
+   "23.6712377",
+   "23.9912377",
+   "91.1223821",
+   "91.4423821"
+  ],
+  "category": "place",
+  "display_name": "Agartala, Mohanpur, West Tripura, Tripura, 799001, India",
+  "lat": "23.8312377",
+  "lon": "91.2823821"
+ },
+ "agra": {
+  "boundingbox": [
+   "27.0152554",
+   "27.3352554",
+   "77.8498161",
+   "78.1698161"
+  ],
+  "category": "place",
+  "display_name": "Agra, Uttar Pradesh, 280001, India",
+  "lat": "27.1752554",
+  "lon": "78.0098161"
+ },
+ "ahmedabad": {
+  "boundingbox": [
+   "22.8615374",
+   "23.1815374",
+   "72.4200568",
+   "72.7400568"
+  ],
+  "category": "place",
+  "display_name": "Ahmedabad, Gujarat, 380001, India",
+  "lat": "23.0215374",
+  "lon": "72.5800568"
+ },
+ "aizawl": {
+  "boundingbox": [
+   "23.5677631",
+   "23.8877631",
+   "92.5579947",
+   "92.8779947"
+  ],
+  "category": "place",
+  "display_name": "Aizawl, Tlangnuam, Aizawl, Mizoram, 796190, India",
+  "lat": "23.7277631",
+  "lon": "92.7179947"
+ },
+ "alappuzha": {
+  "boundingbox": [
+   "9.1101406",
+   "9.8910134",
+   "76.2794604",
+   "76.6911251"
+  ],
+  "category": "boundary",
+  "display_name": "Alappuzha, Kerala, India",
+  "lat": "9.5003416",
+  "lon": "76.4123364"
+ },
+ "allahabad": {
+  "boundingbox": [
+   "25.2781302",
+   "25.5981302",
+   "81.6738005",
+   "81.9938005"
+  ],
+  "category": "place",
+  "display_name": "Prayagraj, Allahabad, Prayagraj, Uttar Pradesh, 211001, India",
+  "lat": "25.4381302",
+  "lon": "81.8338005"
+ },
+ "amaravati": {
+  "boundingbox": [
+   "16.3496679",
+   "16.6696679",
+   "80.3584535",
+   "80.6784535"
+  ],
+  "category": "place",
+  "display_name": "Amaravati, Andhra Pradesh Capital Region Development Authority, Thullur Mandal, Guntur District, Andhra Pradesh, India",
+  "lat": "16.5096679",
+  "lon": "80.5184535"
+ },
+ "amritsar": {
+  "boundingbox": [
+   "31.4756659",
+   "31.7956659",
+   "74.7187496",
+   "75.0387496"
+  ],
+  "category": "place",
+  "display_name": "Amritsar, Amritsar I Tahsil, Amritsar, Punjab, 143001, India",
+  "lat": "31.6356659",
+  "lon": "74.8787496"
+ },
+ "banaras": {
+  "boundingbox": [
+   "25.1756491",
+   "25.4956491",
+   "82.8476292",
+   "83.1676292"
+  ],
+  "category": "place",
+  "display_name": "Varanasi, Sadar, Varanasi, Uttar Pradesh, 221001, India",
+  "lat": "25.3356491",
+  "lon": "83.0076292"
+ },
+ "bangalore": {
+  "boundingbox": [
+   "12.8334905",
+   "13.1426196",
+   "77.4598797",
+   "77.7840639"
+  ],
+  "category": "boundary",
+  "display_name": "Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, India",
+  "lat": "12.9767936",
+  "lon": "77.5900820"
+ },
+ "benares": {
+  "boundingbox": [
+   "25.1756491",
+   "25.4956491",
+   "82.8476292",
+   "83.1676292"
+  ],
+  "category": "place",
+  "display_name": "Varanasi, Sadar, Varanasi, Uttar Pradesh, 221001, India",
+  "lat": "25.3356491",
+  "lon": "83.0076292"
+ },
+ "bengaluru": {
+  "boundingbox": [
+   "12.8334905",
+   "13.1426196",
+   "77.4598797",
+   "77.7840639"
+  ],
+  "category": "boundary",
+  "display_name": "Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, India",
+  "lat": "12.9767936",
+  "lon": "77.5900820"
+ },
+ "bhopal": {
+  "boundingbox": [
+   "23.0984857",
+   "23.4184857",
+   "77.2419890",
+   "77.5619890"
+  ],
+  "category": "place",
+  "display_name": "Bhopal, Huzur Tahsil, Bhopal, Madhya Pradesh, 462001, India",
+  "lat": "23.2584857",
+  "lon": "77.4019890"
+ },
+ "bhubaneswar": {
+  "boundingbox": [
+   "20.1002964",
+   "20.4202964",
+   "85.6794521",
+   "85.9994521"
+  ],
+  "category": "place",
+  "display_name": "Bhubaneshwar, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751001, India",
+  "lat": "20.2602964",
+  "lon": "85.8394521"
+ },
+ "bombay": {
+  "boundingbox": [
+   "18.8949990",
+   "19.2149990",
+   "72.7092035",
+   "73.0292035"
+  ],
+  "category": "place",
+  "display_name": "Mumbai, Mumbai Suburban District, Maharashtra, 400051, India",
+  "lat": "19.0549990",
+  "lon": "72.8692035"
+ },
+ "calcutta": {
+  "boundingbox": [
+   "22.4335321",
+   "22.6325679",
+   "88.2421429",
+   "88.4589549"
+  ],
+  "category": "boundary",
+  "display_name": "Kolkata, Greater Kolkata, Kolkata, West Bengal, India",
+  "lat": "22.5726459",
+  "lon": "88.3638953"
+ },
+ "calicut": {
+  "boundingbox": [
+   "11.0850558",
+   "11.4050558",
+   "75.6154716",
+   "75.9354716"
+  ],
+  "category": "place",
+  "display_name": "Kozhikode, Kerala, 673001, India",
+  "lat": "11.2450558",
+  "lon": "75.7754716"
+ },
+ "chandigarh": {
+  "boundingbox": [
+   "30.5734421",
+   "30.8934421",
+   "76.6197143",
+   "76.9397143"
+  ],
+  "category": "place",
+  "display_name": "Chandigarh, 160018, India",
+  "lat": "30.7334421",
+  "lon": "76.7797143"
+ },
+ "chennai": {
+  "boundingbox": [
+   "12.8519771",
+   "13.2351580",
+   "80.1339233",
+   "80.3328982"
+  ],
+  "category": "boundary",
+  "display_name": "Chennai, Chennai Metropolitan Area, Chennai District, Tamil Nadu, India",
+  "lat": "13.0800915",
+  "lon": "80.2807978"
+ },
+ "chilika": {
+  "boundingbox": [
+   "19.4673244",
+   "19.9033379",
+   "85.0934163",
+   "85.6574151"
+  ],
+  "category": "water",
+  "display_name": "Chilika Lake, Krushna Prasad, Puri, Odisha, India",
+  "lat": "19.6853195",
+  "lon": "85.2503699"
+ },
+ "chilika lake": {
+  "boundingbox": [
+   "19.4673244",
+   "19.9033379",
+   "85.0934163",
+   "85.6574151"
+  ],
+  "category": "water",
+  "display_name": "Chilika Lake, Krushna Prasad, Puri, Odisha, India",
+  "lat": "19.6853195",
+  "lon": "85.2503699"
+ },
+ "cochin": {
+  "boundingbox": [
+   "9.8079032",
+   "10.1279032",
+   "76.0844378",
+   "76.4044378"
+  ],
+  "category": "place",
+  "display_name": "Kochi, Ernakulam, Kerala, 682001, India",
+  "lat": "9.9679032",
+  "lon": "76.2444378"
+ },
+ "coimbatore": {
+  "boundingbox": [
+   "10.8418115",
+   "11.1618115",
+   "76.8028425",
+   "77.1228425"
+  ],
+  "category": "place",
+  "display_name": "Coimbatore, Coimbatore North, Coimbatore, Tamil Nadu, 641001, India",
+  "lat": "11.0018115",
+  "lon": "76.9628425"
+ },
+ "dal lake": {
+  "boundingbox": [
+   "34.0800634",
+   "34.1470686",
+   "74.8284792",
+   "74.8809500"
+  ],
+  "category": "water",
+  "display_name": "Dal Lake, Srinagar, Jammu and Kashmir, India",
+  "lat": "34.1137233",
+  "lon": "74.8700063"
+ },
+ "dehradun": {
+  "boundingbox": [
+   "30.1655646",
+   "30.4855646",
+   "77.8836813",
+   "78.2036813"
+  ],
+  "category": "place",
+  "display_name": "Dehradun, Uttarakhand, 248001, India",
+  "lat": "30.3255646",
+  "lon": "78.0436813"
+ },
+ "delhi": {
+  "boundingbox": [
+   "28.4046285",
+   "28.8834464",
+   "76.8388351",
+   "77.3453379"
+  ],
+  "category": "boundary",
+  "display_name": "Delhi, India",
+  "lat": "28.6328027",
+  "lon": "77.2197713"
+ },
+ "gandhinagar": {
+  "boundingbox": [
+   "23.1649739",
+   "23.2770054",
+   "72.6025742",
+   "72.6890629"
+  ],
+  "category": "place",
+  "display_name": "Gandhinagar, Gandhinagar Taluka, Gandhinagar, Gujarat, India",
+  "lat": "23.2232877",
+  "lon": "72.6492267"
+ },
+ "gangtok": {
+  "boundingbox": [
+   "27.1690460",
+   "27.4890460",
+   "88.4522673",
+   "88.7722673"
+  ],
+  "category": "place",
+  "display_name": "Gangtok, Gangtok subdivision, Gangtok, Sikkim, 737101, India",
+  "lat": "27.3290460",
+  "lon": "88.6122673"
+ },
+ "gurgaon": {
+  "boundingbox": [
+   "28.2005681",
+   "28.5409048",
+   "76.6510198",
+   "77.2418683"
+  ],
+  "category": "boundary",
+  "display_name": "Gurgaon, Haryana, India",
+  "lat": "28.4646148",
+  "lon": "77.0299194"
+ },
+ "gurugram": {
+  "boundingbox": [
+   "28.2005681",
+   "28.5409048",
+   "76.6510198",
+   "77.2418683"
+  ],
+  "category": "boundary",
+  "display_name": "Gurgaon, Haryana, India",
+  "lat": "28.4646148",
+  "lon": "77.0299194"
+ },
+ "guwahati": {
+  "boundingbox": [
+   "26.0205978",
+   "26.3405978",
+   "91.5939430",
+   "91.9139430"
+  ],
+  "category": "place",
+  "display_name": "Guwahati, Kamrup Metropolitan, Assam, 781001, India",
+  "lat": "26.1805978",
+  "lon": "91.7539430"
+ },
+ "haridwar": {
+  "boundingbox": [
+   "29.7784473",
+   "30.0984473",
+   "77.9852985",
+   "78.3052985"
+  ],
+  "category": "place",
+  "display_name": "Haridwar, Hardwar, Haridwar, Uttarakhand, 249401, India",
+  "lat": "29.9384473",
+  "lon": "78.1452985"
+ },
+ "hosur": {
+  "boundingbox": [
+   "12.5779869",
+   "12.8909806",
+   "77.7562798",
+   "77.9576969"
+  ],
+  "category": "boundary",
+  "display_name": "Hosur, Krishnagiri, Tamil Nadu, India",
+  "lat": "12.7345576",
+  "lon": "77.8494642"
+ },
+ "hyderabad": {
+  "boundingbox": [
+   "17.2916377",
+   "17.5608321",
+   "78.2387067",
+   "78.6223912"
+  ],
+  "category": "boundary",
+  "display_name": "Hyderabad, Bahadurpura mandal, Hyderabad, Telangana, India",
+  "lat": "17.3605890",
+  "lon": "78.4740613"
+ },
+ "imphal": {
+  "boundingbox": [
+   "24.6391162",
+   "24.9591162",
+   "93.7764419",
+   "94.0964419"
+  ],
+  "category": "place",
+  "display_name": "Imphal, Lamphelpat, Imphal West, Manipur, 795001, India",
+  "lat": "24.7991162",
+  "lon": "93.9364419"
+ },
+ "indore": {
+  "boundingbox": [
+   "22.5603616",
+   "22.8803616",
+   "75.7081996",
+   "76.0281996"
+  ],
+  "category": "place",
+  "display_name": "Indore, Juni Indore Tahsil, Indore, Madhya Pradesh, 452001, India",
+  "lat": "22.7203616",
+  "lon": "75.8681996"
+ },
+ "itanagar": {
+  "boundingbox": [
+   "26.9379659",
+   "27.2579659",
+   "93.4637291",
+   "93.7837291"
+  ],
+  "category": "place",
+  "display_name": "Itanagar, Itanagar EAC, Papum Pare, Arunachal Pradesh, 791111, India",
+  "lat": "27.0979659",
+  "lon": "93.6237291"
+ },
+ "jaipur": {
+  "boundingbox": [
+   "26.7554576",
+   "27.0754576",
+   "75.6589817",
+   "75.9789817"
+  ],
+  "category": "place",
+  "display_name": "Jaipur, Jaipur Municipal Corporation, Jaipur Tehsil, Jaipur, Rajasthan, 302001, India",
+  "lat": "26.9154576",
+  "lon": "75.8189817"
+ },
+ "jammu": {
+  "boundingbox": [
+   "32.5585614",
+   "32.8785614",
+   "74.6980917",
+   "75.0180917"
+  ],
+  "category": "place",
+  "display_name": "Jammu, Jammu district, Jammu and Kashmir, 180001, India",
+  "lat": "32.7185614",
+  "lon": "74.8580917"
+ },
+ "jodhpur": {
+  "boundingbox": [
+   "26.2059842",
+   "26.3536661",
+   "72.9485753",
+   "73.0888716"
+  ],
+  "category": "place",
+  "display_name": "Jodhpur, Jodhpur Tehsil, Jodhpur, Rajasthan, India",
+  "lat": "26.2967719",
+  "lon": "73.0351433"
+ },
+ "kanpur": {
+  "boundingbox": [
+   "26.3009135",
+   "26.6209135",
+   "80.1617588",
+   "80.4817588"
+  ],
+  "category": "place",
+  "display_name": "Kanpur, Kanpur Nagar, Uttar Pradesh, 208012, India",
+  "lat": "26.4609135",
+  "lon": "80.3217588"
+ },
+ "kaziranga": {
+  "boundingbox": [
+   "26.5381658",
+   "26.7467385",
+   "93.0101680",
+   "93.5899121"
+  ],
+  "category": "boundary",
+  "display_name": "Kaziranga National Park, Bokakhat, Golaghat, Assam, India",
+  "lat": "26.6581047",
+  "lon": "93.3927441"
+ },
+ "kochi": {
+  "boundingbox": [
+   "9.8079032",
+   "10.1279032",
+   "76.0844378",
+   "76.4044378"
+  ],
+  "category": "place",
+  "display_name": "Kochi, Ernakulam, Kerala, 682001, India",
+  "lat": "9.9679032",
+  "lon": "76.2444378"
+ },
+ "kohima": {
+  "boundingbox": [
+   "25.5018755",
+   "25.8218755",
+   "93.9419156",
+   "94.2619156"
+  ],
+  "category": "place",
+  "display_name": "Kohima, Kohima Sadar, Kohima, Nagaland, 797001, India",
+  "lat": "25.6618755",
+  "lon": "94.1019156"
+ },
+ "kolkata": {
+  "boundingbox": [
+   "22.4335321",
+   "22.6325679",
+   "88.2421429",
+   "88.4589549"
+  ],
+  "category": "boundary",
+  "display_name": "Kolkata, Greater Kolkata, Kolkata, West Bengal, India",
+  "lat": "22.5726459",
+  "lon": "88.3638953"
+ },
+ "kozhikode": {
+  "boundingbox": [
+   "11.0850558",
+   "11.4050558",
+   "75.6154716",
+   "75.9354716"
+  ],
+  "category": "place",
+  "display_name": "Kozhikode, Kerala, 673001, India",
+  "lat": "11.2450558",
+  "lon": "75.7754716"
+ },
+ "leh": {
+  "boundingbox": [
+   "32.3357400",
+   "35.6729307",
+   "76.4192894",
+   "79.4607280"
+  ],
+  "category": "boundary",
+  "display_name": "Leh, India",
+  "lat": "34.0041112",
+  "lon": "77.6573483"
+ },
+ "loktak lake": {
+  "boundingbox": [
+   "24.5044738",
+   "24.6139187",
+   "93.7633052",
+   "93.8613724"
+  ],
+  "category": "water",
+  "display_name": "Loktak Lake, Karang, Nambol block, Bishnupur block, Bishnupur district, Manipur, India",
+  "lat": "24.5584253",
+  "lon": "93.8132376"
+ },
+ "lucknow": {
+  "boundingbox": [
+   "26.6781000",
+   "26.9981000",
+   "80.7746001",
+   "81.0946001"
+  ],
+  "category": "place",
+  "display_name": "Lucknow, Uttar Pradesh, 226027, India",
+  "lat": "26.8381000",
+  "lon": "80.9346001"
+ },
+ "madras": {
+  "boundingbox": [
+   "12.8519771",
+   "13.2351580",
+   "80.1339233",
+   "80.3328982"
+  ],
+  "category": "boundary",
+  "display_name": "Chennai, Chennai Metropolitan Area, Chennai District, Tamil Nadu, India",
+  "lat": "13.0800915",
+  "lon": "80.2807978"
+ },
+ "madurai": {
+  "boundingbox": [
+   "9.8245041",
+   "9.9933722",
+   "78.0155927",
+   "78.2030091"
+  ],
+  "category": "boundary",
+  "display_name": "Madurai, Madurai South, Madurai, Tamil Nadu, India",
+  "lat": "9.9261153",
+  "lon": "78.1140983"
+ },
+ "majuli": {
+  "boundingbox": [
+   "26.8663625",
+   "27.1822017",
+   "93.9565801",
+   "94.5928686"
+  ],
+  "category": "boundary",
+  "display_name": "Majuli, Assam, India",
+  "lat": "27.0219529",
+  "lon": "94.3274230"
+ },
+ "mangalore": {
+  "boundingbox": [
+   "12.7098247",
+   "13.0298247",
+   "74.6830125",
+   "75.0030125"
+  ],
+  "category": "place",
+  "display_name": "Mangaluru, Mangaluru taluk, Dakshina Kannada, Karnataka, 575001, India",
+  "lat": "12.8698247",
+  "lon": "74.8430125"
+ },
+ "mangaluru": {
+  "boundingbox": [
+   "12.7098247",
+   "13.0298247",
+   "74.6830125",
+   "75.0030125"
+  ],
+  "category": "place",
+  "display_name": "Mangaluru, Mangaluru taluk, Dakshina Kannada, Karnataka, 575001, India",
+  "lat": "12.8698247",
+  "lon": "74.8430125"
+ },
+ "mumbai": {
+  "boundingbox": [
+   "18.8949990",
+   "19.2149990",
+   "72.7092035",
+   "73.0292035"
+  ],
+  "category": "place",
+  "display_name": "Mumbai, Mumbai Suburban District, Maharashtra, 400051, India",
+  "lat": "19.0549990",
+  "lon": "72.8692035"
+ },
+ "mysore": {
+  "boundingbox": [
+   "12.2532165",
+   "12.3550295",
+   "76.5984090",
+   "76.7056503"
+  ],
+  "category": "boundary",
+  "display_name": "Mysuru, Mysuru taluk, Mysuru District, Karnataka, 570001, India",
+  "lat": "12.3041464",
+  "lon": "76.6529521"
+ },
+ "mysuru": {
+  "boundingbox": [
+   "12.2532165",
+   "12.3550295",
+   "76.5984090",
+   "76.7056503"
+  ],
+  "category": "boundary",
+  "display_name": "Mysuru, Mysuru taluk, Mysuru District, Karnataka, 570001, India",
+  "lat": "12.3041464",
+  "lon": "76.6529521"
+ },
+ "nagpur": {
+  "boundingbox": [
+   "21.0529736",
+   "21.2310022",
+   "78.9952182",
+   "79.1788461"
+  ],
+  "category": "boundary",
+  "display_name": "Nagpur, Nagpur Urban Taluka, Nagpur, Maharashtra, India",
+  "lat": "21.1498134",
+  "lon": "79.0820556"
+ },
+ "nashik": {
+  "boundingbox": [
+   "19.8512475",
+   "20.1712475",
+   "73.6302364",
+   "73.9502364"
+  ],
+  "category": "place",
+  "display_name": "Nashik, Nashik Subdistrict, Nashik District, Maharashtra, 422001, India",
+  "lat": "20.0112475",
+  "lon": "73.7902364"
+ },
+ "new delhi": {
+  "boundingbox": [
+   "28.4046285",
+   "28.8834464",
+   "76.8388351",
+   "77.3453379"
+  ],
+  "category": "boundary",
+  "display_name": "Delhi, India",
+  "lat": "28.6328027",
+  "lon": "77.2197713"
+ },
+ "noida": {
+  "boundingbox": [
+   "28.4006672",
+   "28.6354703",
+   "77.2928863",
+   "77.5065172"
+  ],
+  "category": "boundary",
+  "display_name": "Noida, Dadri, Gautam Buddha Nagar, Uttar Pradesh, India",
+  "lat": "28.5706333",
+  "lon": "77.3272147"
+ },
+ "panaji": {
+  "boundingbox": [
+   "15.3389946",
+   "15.6589946",
+   "73.6682141",
+   "73.9882141"
+  ],
+  "category": "place",
+  "display_name": "Panaji, Tiswadi, North Goa, Goa, 403001, India",
+  "lat": "15.4989946",
+  "lon": "73.8282141"
+ },
+ "patna": {
+  "boundingbox": [
+   "25.5389546",
+   "25.6510479",
+   "85.0118412",
+   "85.2641902"
+  ],
+  "category": "place",
+  "display_name": "Patna, Patna Rural, Patna, Bihar, India",
+  "lat": "25.6093239",
+  "lon": "85.1235252"
+ },
+ "port blair": {
+  "boundingbox": [
+   "11.5045348",
+   "11.8245348",
+   "92.5790448",
+   "92.8990448"
+  ],
+  "category": "place",
+  "display_name": "Port Blair, Port Blair Tehsil, South Andaman, Andaman and Nicobar Islands, 744101, India",
+  "lat": "11.6645348",
+  "lon": "92.7390448"
+ },
+ "prayagraj": {
+  "boundingbox": [
+   "25.2781302",
+   "25.5981302",
+   "81.6738005",
+   "81.9938005"
+  ],
+  "category": "place",
+  "display_name": "Prayagraj, Allahabad, Prayagraj, Uttar Pradesh, 211001, India",
+  "lat": "25.4381302",
+  "lon": "81.8338005"
+ },
+ "puducherry": {
+  "boundingbox": [
+   "10.8277210",
+   "16.7617112",
+   "75.5265863",
+   "82.3137136"
+  ],
+  "category": "boundary",
+  "display_name": "Puducherry, India",
+  "lat": "10.9156489",
+  "lon": "79.8069488"
+ },
+ "pulicat lake": {
+  "boundingbox": [
+   "13.3829632",
+   "13.8975194",
+   "80.0447774",
+   "80.3321305"
+  ],
+  "category": "water",
+  "display_name": "Pulicat Lake, Tada Mandal, Tirupati District, Andhra Pradesh, India",
+  "lat": "13.6402420",
+  "lon": "80.1671589"
+ },
+ "pune": {
+  "boundingbox": [
+   "18.3613738",
+   "18.6813738",
+   "73.6945071",
+   "74.0145071"
+  ],
+  "category": "place",
+  "display_name": "Pune, Pune City Subdistrict, Pune District, Maharashtra, 411001, India",
+  "lat": "18.5213738",
+  "lon": "73.8545071"
+ },
+ "raipur": {
+  "boundingbox": [
+   "21.0780912",
+   "21.3980912",
+   "81.4736993",
+   "81.7936993"
+  ],
+  "category": "place",
+  "display_name": "Raipur, Raipur Tahsil, Raipur, Chhattisgarh, 493332, India",
+  "lat": "21.2380912",
+  "lon": "81.6336993"
+ },
+ "ranchi": {
+  "boundingbox": [
+   "23.2100501",
+   "23.5300501",
+   "85.1650387",
+   "85.4850387"
+  ],
+  "category": "place",
+  "display_name": "Ranchi, Kanke, Ranchi, Jharkhand, 834001, India",
+  "lat": "23.3700501",
+  "lon": "85.3250387"
+ },
+ "rishikesh": {
+  "boundingbox": [
+   "30.0686537",
+   "30.1486537",
+   "78.2516193",
+   "78.3316193"
+  ],
+  "category": "place",
+  "display_name": "Rishikesh, Dehradun, Uttarakhand, 249201, India",
+  "lat": "30.1086537",
+  "lon": "78.2916193"
+ },
+ "sambhar lake": {
+  "boundingbox": [
+   "26.8811484",
+   "27.0188600",
+   "74.9044654",
+   "75.1220016"
+  ],
+  "category": "natural",
+  "display_name": "Sambhar Salt Lake, Gudha, Nawa Tehsil, Didwana-Kuchaman, Rajasthan, India",
+  "lat": "26.9497699",
+  "lon": "75.0683212"
+ },
+ "shillong": {
+  "boundingbox": [
+   "25.4159931",
+   "25.7359931",
+   "91.7227872",
+   "92.0427872"
+  ],
+  "category": "place",
+  "display_name": "Shillong, Mylliem, East Khasi Hills, Meghalaya, 793001, India",
+  "lat": "25.5759931",
+  "lon": "91.8827872"
+ },
+ "shimla": {
+  "boundingbox": [
+   "30.9440393",
+   "31.2640393",
+   "77.0107923",
+   "77.3307923"
+  ],
+  "category": "place",
+  "display_name": "Shimla, Shimla (urban), Shimla, Himachal Pradesh, 171001, India",
+  "lat": "31.1040393",
+  "lon": "77.1707923"
+ },
+ "srinagar": {
+  "boundingbox": [
+   "33.9147444",
+   "34.2347444",
+   "74.6604443",
+   "74.9804443"
+  ],
+  "category": "place",
+  "display_name": "Srinagar, Srinagar (South), Srinagar, Jammu and Kashmir, 190001, India",
+  "lat": "34.0747444",
+  "lon": "74.8204443"
+ },
+ "surat": {
+  "boundingbox": [
+   "21.0494892",
+   "21.3694892",
+   "72.6717058",
+   "72.9917058"
+  ],
+  "category": "place",
+  "display_name": "Surat, Katargam Taluka, Surat, Gujarat, 395008, India",
+  "lat": "21.2094892",
+  "lon": "72.8317058"
+ },
+ "thane": {
+  "boundingbox": [
+   "18.9984479",
+   "19.7314263",
+   "72.7568643",
+   "73.7970543"
+  ],
+  "category": "boundary",
+  "display_name": "Thane, Maharashtra, India",
+  "lat": "19.3653598",
+  "lon": "73.3685437"
+ },
+ "thiruvananthapuram": {
+  "boundingbox": [
+   "8.3282267",
+   "8.6482267",
+   "76.7875510",
+   "77.1075510"
+  ],
+  "category": "place",
+  "display_name": "Thiruvananthapuram, Kerala, 695001, India",
+  "lat": "8.4882267",
+  "lon": "76.9475510"
+ },
+ "trivandrum": {
+  "boundingbox": [
+   "8.3282267",
+   "8.6482267",
+   "76.7875510",
+   "77.1075510"
+  ],
+  "category": "place",
+  "display_name": "Thiruvananthapuram, Kerala, 695001, India",
+  "lat": "8.4882267",
+  "lon": "76.9475510"
+ },
+ "udaipur": {
+  "boundingbox": [
+   "24.4187210",
+   "24.7387210",
+   "73.5262571",
+   "73.8462571"
+  ],
+  "category": "place",
+  "display_name": "Udaipur, Girwa Tehsil, Udaipur, Rajasthan, 313001, India",
+  "lat": "24.5787210",
+  "lon": "73.6862571"
+ },
+ "varanasi": {
+  "boundingbox": [
+   "25.1756491",
+   "25.4956491",
+   "82.8476292",
+   "83.1676292"
+  ],
+  "category": "place",
+  "display_name": "Varanasi, Sadar, Varanasi, Uttar Pradesh, 221001, India",
+  "lat": "25.3356491",
+  "lon": "83.0076292"
+ },
+ "vembanad lake": {
+  "boundingbox": [
+   "9.5143425",
+   "10.1839772",
+   "76.1739330",
+   "76.4308758"
+  ],
+  "category": "water",
+  "display_name": "Vembanad Lake, Thaneermukkom, Cherthala, Alappuzha, Kerala, India",
+  "lat": "9.5949220",
+  "lon": "76.3942113"
+ },
+ "vijayawada": {
+  "boundingbox": [
+   "16.3515306",
+   "16.6715306",
+   "80.4560469",
+   "80.7760469"
+  ],
+  "category": "place",
+  "display_name": "Vijayawada, Vijayawada Urban Mandal, NTR District, Andhra Pradesh, 520001, India",
+  "lat": "16.5115306",
+  "lon": "80.6160469"
+ },
+ "visakhapatnam": {
+  "boundingbox": [
+   "17.5335526",
+   "17.8535526",
+   "83.1321297",
+   "83.4521297"
+  ],
+  "category": "place",
+  "display_name": "Visakhapatnam, Visakhapatnam Urban Mandal, Visakhapatnam District, Andhra Pradesh, 530001, India",
+  "lat": "17.6935526",
+  "lon": "83.2921297"
+ },
+ "wayanad": {
+  "boundingbox": [
+   "11.4513610",
+   "11.9786826",
+   "75.7731490",
+   "76.4435318"
+  ],
+  "category": "boundary",
+  "display_name": "Wayanad, Kerala, India",
+  "lat": "11.7151291",
+  "lon": "76.1271185"
+ },
+ "अहमदाबाद": {
+  "boundingbox": [
+   "22.8615374",
+   "23.1815374",
+   "72.4200568",
+   "72.7400568"
+  ],
+  "category": "place",
+  "display_name": "Ahmedabad, Gujarat, 380001, India",
+  "lat": "23.0215374",
+  "lon": "72.5800568"
+ },
+ "आगरा": {
+  "boundingbox": [
+   "27.0152554",
+   "27.3352554",
+   "77.8498161",
+   "78.1698161"
+  ],
+  "category": "place",
+  "display_name": "Agra, Uttar Pradesh, 280001, India",
+  "lat": "27.1752554",
+  "lon": "78.0098161"
+ },
+ "इंदौर": {
+  "boundingbox": [
+   "22.5603616",
+   "22.8803616",
+   "75.7081996",
+   "76.0281996"
+  ],
+  "category": "place",
+  "display_name": "Indore, Juni Indore Tahsil, Indore, Madhya Pradesh, 452001, India",
+  "lat": "22.7203616",
+  "lon": "75.8681996"
+ },
+ "कानपुर": {
+  "boundingbox": [
+   "26.3009135",
+   "26.6209135",
+   "80.1617588",
+   "80.4817588"
+  ],
+  "category": "place",
+  "display_name": "Kanpur, Kanpur Nagar, Uttar Pradesh, 208012, India",
+  "lat": "26.4609135",
+  "lon": "80.3217588"
+ },
+ "कोच्चि": {
+  "boundingbox": [
+   "9.8079032",
+   "10.1279032",
+   "76.0844378",
+   "76.4044378"
+  ],
+  "category": "place",
+  "display_name": "Kochi, Ernakulam, Kerala, 682001, India",
+  "lat": "9.9679032",
+  "lon": "76.2444378"
+ },
+ "कोलकाता": {
+  "boundingbox": [
+   "22.4335321",
+   "22.6325679",
+   "88.2421429",
+   "88.4589549"
+  ],
+  "category": "boundary",
+  "display_name": "Kolkata, Greater Kolkata, Kolkata, West Bengal, India",
+  "lat": "22.5726459",
+  "lon": "88.3638953"
+ },
+ "गुरुग्राम": {
+  "boundingbox": [
+   "28.2005681",
+   "28.5409048",
+   "76.6510198",
+   "77.2418683"
+  ],
+  "category": "boundary",
+  "display_name": "Gurgaon, Haryana, India",
+  "lat": "28.4646148",
+  "lon": "77.0299194"
+ },
+ "गुवाहाटी": {
+  "boundingbox": [
+   "26.0205978",
+   "26.3405978",
+   "91.5939430",
+   "91.9139430"
+  ],
+  "category": "place",
+  "display_name": "Guwahati, Kamrup Metropolitan, Assam, 781001, India",
+  "lat": "26.1805978",
+  "lon": "91.7539430"
+ },
+ "चंडीगढ़": {
+  "boundingbox": [
+   "30.5734421",
+   "30.8934421",
+   "76.6197143",
+   "76.9397143"
+  ],
+  "category": "place",
+  "display_name": "Chandigarh, 160018, India",
+  "lat": "30.7334421",
+  "lon": "76.7797143"
+ },
+ "चिल्का झील": {
+  "boundingbox": [
+   "19.4673244",
+   "19.9033379",
+   "85.0934163",
+   "85.6574151"
+  ],
+  "category": "water",
+  "display_name": "Chilika Lake, Krushna Prasad, Puri, Odisha, India",
+  "lat": "19.6853195",
+  "lon": "85.2503699"
+ },
+ "चेन्नई": {
+  "boundingbox": [
+   "12.8519771",
+   "13.2351580",
+   "80.1339233",
+   "80.3328982"
+  ],
+  "category": "boundary",
+  "display_name": "Chennai, Chennai Metropolitan Area, Chennai District, Tamil Nadu, India",
+  "lat": "13.0800915",
+  "lon": "80.2807978"
+ },
+ "जयपुर": {
+  "boundingbox": [
+   "26.7554576",
+   "27.0754576",
+   "75.6589817",
+   "75.9789817"
+  ],
+  "category": "place",
+  "display_name": "Jaipur, Jaipur Municipal Corporation, Jaipur Tehsil, Jaipur, Rajasthan, 302001, India",
+  "lat": "26.9154576",
+  "lon": "75.8189817"
+ },
+ "दिल्ली": {
+  "boundingbox": [
+   "28.4046285",
+   "28.8834464",
+   "76.8388351",
+   "77.3453379"
+  ],
+  "category": "boundary",
+  "display_name": "Delhi, India",
+  "lat": "28.6328027",
+  "lon": "77.2197713"
+ },
+ "देहरादून": {
+  "boundingbox": [
+   "30.1655646",
+   "30.4855646",
+   "77.8836813",
+   "78.2036813"
+  ],
+  "category": "place",
+  "display_name": "Dehradun, Uttarakhand, 248001, India",
+  "lat": "30.3255646",
+  "lon": "78.0436813"
+ },
+ "नई दिल्ली": {
+  "boundingbox": [
+   "28.4046285",
+   "28.8834464",
+   "76.8388351",
+   "77.3453379"
+  ],
+  "category": "boundary",
+  "display_name": "Delhi, India",
+  "lat": "28.6328027",
+  "lon": "77.2197713"
+ },
+ "नागपुर": {
+  "boundingbox": [
+   "21.0529736",
+   "21.2310022",
+   "78.9952182",
+   "79.1788461"
+  ],
+  "category": "boundary",
+  "display_name": "Nagpur, Nagpur Urban Taluka, Nagpur, Maharashtra, India",
+  "lat": "21.1498134",
+  "lon": "79.0820556"
+ },
+ "पटना": {
+  "boundingbox": [
+   "25.5389546",
+   "25.6510479",
+   "85.0118412",
+   "85.2641902"
+  ],
+  "category": "place",
+  "display_name": "Patna, Patna Rural, Patna, Bihar, India",
+  "lat": "25.6093239",
+  "lon": "85.1235252"
+ },
+ "पुणे": {
+  "boundingbox": [
+   "18.3613738",
+   "18.6813738",
+   "73.6945071",
+   "74.0145071"
+  ],
+  "category": "place",
+  "display_name": "Pune, Pune City Subdistrict, Pune District, Maharashtra, 411001, India",
+  "lat": "18.5213738",
+  "lon": "73.8545071"
+ },
+ "प्रयागराज": {
+  "boundingbox": [
+   "25.2781302",
+   "25.5981302",
+   "81.6738005",
+   "81.9938005"
+  ],
+  "category": "place",
+  "display_name": "Prayagraj, Allahabad, Prayagraj, Uttar Pradesh, 211001, India",
+  "lat": "25.4381302",
+  "lon": "81.8338005"
+ },
+ "बेंगलुरु": {
+  "boundingbox": [
+   "12.8334905",
+   "13.1426196",
+   "77.4598797",
+   "77.7840639"
+  ],
+  "category": "boundary",
+  "display_name": "Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, India",
+  "lat": "12.9767936",
+  "lon": "77.5900820"
+ },
+ "भुवनेश्वर": {
+  "boundingbox": [
+   "20.1002964",
+   "20.4202964",
+   "85.6794521",
+   "85.9994521"
+  ],
+  "category": "place",
+  "display_name": "Bhubaneshwar, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751001, India",
+  "lat": "20.2602964",
+  "lon": "85.8394521"
+ },
+ "भोपाल": {
+  "boundingbox": [
+   "23.0984857",
+   "23.4184857",
+   "77.2419890",
+   "77.5619890"
+  ],
+  "category": "place",
+  "display_name": "Bhopal, Huzur Tahsil, Bhopal, Madhya Pradesh, 462001, India",
+  "lat": "23.2584857",
+  "lon": "77.4019890"
+ },
+ "मुंबई": {
+  "boundingbox": [
+   "18.8949990",
+   "19.2149990",
+   "72.7092035",
+   "73.0292035"
+  ],
+  "category": "place",
+  "display_name": "Mumbai, Mumbai Suburban District, Maharashtra, 400051, India",
+  "lat": "19.0549990",
+  "lon": "72.8692035"
+ },
+ "रांची": {
+  "boundingbox": [
+   "23.2100501",
+   "23.5300501",
+   "85.1650387",
+   "85.4850387"
+  ],
+  "category": "place",
+  "display_name": "Ranchi, Kanke, Ranchi, Jharkhand, 834001, India",
+  "lat": "23.3700501",
+  "lon": "85.3250387"
+ },
+ "रायपुर": {
+  "boundingbox": [
+   "21.0780912",
+   "21.3980912",
+   "81.4736993",
+   "81.7936993"
+  ],
+  "category": "place",
+  "display_name": "Raipur, Raipur Tahsil, Raipur, Chhattisgarh, 493332, India",
+  "lat": "21.2380912",
+  "lon": "81.6336993"
+ },
+ "लखनऊ": {
+  "boundingbox": [
+   "26.6781000",
+   "26.9981000",
+   "80.7746001",
+   "81.0946001"
+  ],
+  "category": "place",
+  "display_name": "Lucknow, Uttar Pradesh, 226027, India",
+  "lat": "26.8381000",
+  "lon": "80.9346001"
+ },
+ "वाराणसी": {
+  "boundingbox": [
+   "25.1756491",
+   "25.4956491",
+   "82.8476292",
+   "83.1676292"
+  ],
+  "category": "place",
+  "display_name": "Varanasi, Sadar, Varanasi, Uttar Pradesh, 221001, India",
+  "lat": "25.3356491",
+  "lon": "83.0076292"
+ },
+ "शिमला": {
+  "boundingbox": [
+   "30.9440393",
+   "31.2640393",
+   "77.0107923",
+   "77.3307923"
+  ],
+  "category": "place",
+  "display_name": "Shimla, Shimla (urban), Shimla, Himachal Pradesh, 171001, India",
+  "lat": "31.1040393",
+  "lon": "77.1707923"
+ },
+ "श्रीनगर": {
+  "boundingbox": [
+   "33.9147444",
+   "34.2347444",
+   "74.6604443",
+   "74.9804443"
+  ],
+  "category": "place",
+  "display_name": "Srinagar, Srinagar (South), Srinagar, Jammu and Kashmir, 190001, India",
+  "lat": "34.0747444",
+  "lon": "74.8204443"
+ },
+ "सूरत": {
+  "boundingbox": [
+   "21.0494892",
+   "21.3694892",
+   "72.6717058",
+   "72.9917058"
+  ],
+  "category": "place",
+  "display_name": "Surat, Katargam Taluka, Surat, Gujarat, 395008, India",
+  "lat": "21.2094892",
+  "lon": "72.8317058"
+ },
+ "हरिद्वार": {
+  "boundingbox": [
+   "29.7784473",
+   "30.0984473",
+   "77.9852985",
+   "78.3052985"
+  ],
+  "category": "place",
+  "display_name": "Haridwar, Hardwar, Haridwar, Uttarakhand, 249401, India",
+  "lat": "29.9384473",
+  "lon": "78.1452985"
+ },
+ "हैदराबाद": {
+  "boundingbox": [
+   "17.2916377",
+   "17.5608321",
+   "78.2387067",
+   "78.6223912"
+  ],
+  "category": "boundary",
+  "display_name": "Hyderabad, Bahadurpura mandal, Hyderabad, Telangana, India",
+  "lat": "17.3605890",
+  "lon": "78.4740613"
+ },
+ "होसुर": {
+  "boundingbox": [
+   "12.5779869",
+   "12.8909806",
+   "77.7562798",
+   "77.9576969"
+  ],
+  "category": "boundary",
+  "display_name": "Hosur, Krishnagiri, Tamil Nadu, India",
+  "lat": "12.7345576",
+  "lon": "77.8494642"
+ }
+}
