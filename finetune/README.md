@@ -53,6 +53,21 @@ Scaling to RSVQAxBEN needs a paid GPU budget, not different code in SatQuery.
      `hosted:satquery-qwen2vl-rsvqa`;
    - `benchmark_report_base.json`: the base model's accuracy on the same questions.
 
+## Results
+
+The run of 24 October 2026 (Kaggle, one T4, 1,000 steps, about 55 minutes of
+training), on the 500 test questions described above:
+
+| Question type | Base | Fine-tuned |
+|---|---|---|
+| presence | 47.3 % | 94.0 % |
+| comp | 65.9 % | 88.1 % |
+| rural_urban | 66.7 % | 83.3 % |
+| **overall** | **58.4 %** | **90.4 %** |
+
+The training loss fell from 0.26 to about 0.07. Both reports ship in the zip
+(`benchmark_report.json`, `benchmark_report_base.json`).
+
 ## 2. Serve it
 
 Unzip it into `models/` at the repository root (git ignores that folder), then:
@@ -96,5 +111,24 @@ training steps with the loss on the answer alone, re-evaluation and packaging.
 `serve.py` then served the package, and SatQuery's benchmark script and its
 VQA pipeline both got answers from it, with the measured accuracy reaching
 confidence scoring. What that run cannot tell you is how accurate the real
-model will be: that is what the Kaggle run measures. `--load-in-4bit` has not
-been tried here, because it needs a CUDA GPU.
+model will be: that is what the Kaggle run measures.
+
+**4-bit on a GTX 1650 (4 GB), verified 24 October 2026** on Windows 11 with
+Python 3.12, `torch 2.14.1+cu126`, `bitsandbytes 0.50.2` and the pins above,
+in a virtual environment outside the OneDrive folder:
+
+- The model loads in about 35 seconds and uses 2.8 GB of GPU memory, 3.2 GB
+  while answering on a 1024-pixel SatQuery preview.
+- `scripts/evaluate_benchmark.py` against it scored **89.0 %** on the first
+  100 of the 500 questions (comparison 87.5 %, presence 91.7 %), in line
+  with the 90.4 % measured in float16 on Kaggle: 4-bit costs little.
+- Through SatQuery, place questions ("Is there a river near Varanasi?")
+  fetched imagery and were answered by this model in about 50 seconds, with
+  the confidence citing its measured accuracy instead of "unrated".
+
+```powershell
+py -3.12 -m venv $HOME\.satquery-serve
+$HOME\.satquery-serve\Scripts\python -m pip install torch --index-url https://download.pytorch.org/whl/cu126
+$HOME\.satquery-serve\Scripts\python -m pip install -r finetuneequirements-serve.txt bitsandbytes
+$HOME\.satquery-serve\Scripts\python finetune\serve.py --model-dir models\satquery-qwen2vl-rsvqa --load-in-4bit
+```

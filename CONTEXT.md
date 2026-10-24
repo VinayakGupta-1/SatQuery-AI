@@ -293,7 +293,17 @@ never call Groq.
      `latest.json`. Confidence scoring then reads it automatically: answers
      from `hosted:qwen/qwen3.8-27b` stop being "unrated".
    - The user already approved spending their quota on this.
-2. **Wire in the fine-tuned model.** The user was running
+2. **Fine-tuned model: DONE 2026-10-24.** Kaggle: base 58.4 % -> 90.4 %
+   (presence 47.3 -> 94.0, comp 65.9 -> 88.1, rural_urban 66.7 -> 83.3).
+   Unzipped to `models/satquery-qwen2vl-rsvqa/` (git-ignored; the zip is in
+   the user's Downloads). Serving venv: `~/.satquery-serve` (Python 3.12,
+   torch cu126, bitsandbytes); base model in the HF cache. 4-bit on the
+   GTX 1650 verified: 2.8-3.2 GB, 89.0 % on 100 questions locally, full
+   SatQuery VQA works. `backend/.env` was left on Groq (the local model
+   only answers while `serve.py` runs); the switch is in finetune/README.md
+   section 3. It cannot run on the Render free plan (512 MB, no GPU).
+   Old notes on this item follow.
+   **Wire in the fine-tuned model.** The user was running
    `finetune/finetune_rsvqa.ipynb` on Kaggle (T4, about 1.5–3 hours).
    - The result is `satquery-qwen2vl-rsvqa.zip`, about 70–75 MB. It holds
      `adapter/`, `served_model.json`, `benchmark_report.json` (identity

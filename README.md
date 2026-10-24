@@ -240,6 +240,16 @@ on the same questions as the script above, and a small server that exposes the
 result to SatQuery as an OpenAI-compatible endpoint. Pointing
 `SATQUERY_VQA_BASE_URL` at it swaps the model in, with its measured accuracy.
 
+Measured on Kaggle (T4, 24 October 2026), on the same 500 RSVQA-LR test
+questions:
+
+| Question type | Qwen2-VL-2B, base | Fine-tuned (LoRA, 1 epoch) |
+|---|---|---|
+| Presence ("Is there a river?") | 47.3 % | **94.0 %** |
+| Comparison ("Are there more roads than buildings?") | 65.9 % | **88.1 %** |
+| Rural or urban | 66.7 % | **83.3 %** |
+| **Overall** | **58.4 %** | **90.4 %** |
+
 ## How it works
 
 Every request passes through ten stages: understand the question, classify the
