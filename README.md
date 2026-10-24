@@ -323,7 +323,7 @@ backend/
   tests/
 frontend/         React + TypeScript workspace
 finetune/         Kaggle notebook to fine-tune the vision model, and its server
-presentation/     SIH deck and the scripts that build it
+presentation/     SatQuery.pptx, the project presentation
 deploy/           Hugging Face Space: its README and the deploy script (needs PRO)
 render.yaml       Render blueprint: the free public deployment
 Dockerfile        single-container image (workspace + API on one port)
