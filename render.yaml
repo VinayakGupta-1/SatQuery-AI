@@ -1,0 +1,22 @@
+# Render blueprint: SatQuery AI as one free web service, built from the root
+# Dockerfile (the workspace and the API on one port; Render supplies $PORT).
+#
+# Deploy: https://render.com/deploy?repo=https://github.com/VinayakGupta-1/SatQuery-AI
+# Render asks for SATQUERY_AGENT_API_KEY while creating it; leave it empty to
+# run on the offline rules with the vision features switched off.
+services:
+  - type: web
+    name: satquery-ai
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # The Groq key. Visitors share its free-tier quota.
+      - key: SATQUERY_AGENT_API_KEY
+        sync: false
+      - key: SATQUERY_VQA_ENABLED
+        value: "true"
