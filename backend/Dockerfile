@@ -13,6 +13,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# ...but they link the system libexpat, which the slim image no longer ships;
+# without it rasterio fails to import and raster I/O silently falls back to
+# the builtin codec, which cannot fetch imagery.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements-lock.txt .
 RUN pip install --no-cache-dir -r requirements-lock.txt
 

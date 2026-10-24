@@ -64,7 +64,7 @@ jobs:
             if curl -fsS http://localhost:8080/api/health > /dev/null; then break; fi
             sleep 2
           done
-          curl -fsS http://localhost:8080/api/health
+          curl -fsS http://localhost:8080/api/health | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['backend']['raster_backend'] == 'rasterio', d; print(d['backend'])"
           curl -fsS http://localhost:8080/api/capabilities | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['executable'], d; print(len(d['executable']), 'capabilities')"
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
           # A client-side route is served the app, not a 404.
