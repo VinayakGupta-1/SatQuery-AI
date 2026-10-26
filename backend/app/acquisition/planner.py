@@ -235,7 +235,7 @@ def plan_acquisition(
             notes=notes,
         )
 
-    periods = extract_periods(understanding.original_query)
+    periods = extract_periods(understanding.original_query, today)
     year = timedelta(days=365)
     if len(periods) >= 2:
         before = _window(periods[0], today, lookback)

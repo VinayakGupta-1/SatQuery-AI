@@ -97,8 +97,12 @@ export function HelpPage() {
                 Without dates, the clearest scene of the last four months is
                 used, with cloud measured over your area rather than over the
                 whole 110 km tile. With dates - &ldquo;in August 2024&rdquo;,
-                &ldquo;between 2019 and 2025&rdquo;, &ldquo;since 2018&rdquo; -
-                scenes are taken from those periods, and a before scene is matched
+                &ldquo;between 2019 and 2025&rdquo;, &ldquo;since 2018&rdquo;,
+                &ldquo;monsoon 2024&rdquo;, &ldquo;rabi 2023&rdquo;, &ldquo;last
+                month&rdquo; - scenes are taken from those periods. A single day
+                (&ldquo;15/08/2024&rdquo;) often has no scene, since satellites
+                pass every 5 to 12 days, so a month is the safer ask. Sentinel-2
+                reaches back to 2017 and Sentinel-1 to late 2014; a before scene is matched
                 to the season of the after scene so crops and monsoon do not read
                 as change. Areas up to 20 km across are fetched; a larger place is
                 cut to 20 km around its centre and the answer says so. Imagery

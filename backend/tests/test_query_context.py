@@ -49,6 +49,54 @@ def test_numbers_that_are_not_years_are_not_read_as_years(query):
     assert extract_time_range(query) is None
 
 
+TODAY = date(2026, 10, 26)
+
+
+@pytest.mark.parametrize(
+    "query, start, end",
+    [
+        # One day, however it is written; day first, as dates are written in India.
+        ("NDVI in Pune on August 15, 2024", date(2024, 8, 15), date(2024, 8, 15)),
+        ("NDVI on 15th Aug, 2024", date(2024, 8, 15), date(2024, 8, 15)),
+        ("NDVI on 15 August 2024", date(2024, 8, 15), date(2024, 8, 15)),
+        ("NDVI on 05/08/2024", date(2024, 8, 5), date(2024, 8, 5)),
+        ("NDVI on 15-08-2024", date(2024, 8, 15), date(2024, 8, 15)),
+        # A month that cannot come first is read the American way.
+        ("NDVI on 08/15/2024", date(2024, 8, 15), date(2024, 8, 15)),
+        ("water in 2024-08", date(2024, 8, 1), date(2024, 8, 31)),
+        ("between 15/01/2020 and 20 March 2024", date(2020, 1, 15), date(2024, 3, 20)),
+        # Indian seasons.
+        ("flooding near Kochi in monsoon 2024", date(2024, 6, 1), date(2024, 9, 30)),
+        ("2024 monsoon floods", date(2024, 6, 1), date(2024, 9, 30)),
+        ("crops in kharif 2023", date(2023, 6, 1), date(2023, 10, 31)),
+        ("crops in rabi 2023", date(2023, 11, 1), date(2024, 4, 30)),
+        ("मानसून 2024 में बाढ़", date(2024, 6, 1), date(2024, 9, 30)),
+        ("flooding in the last monsoon", date(2026, 6, 1), date(2026, 9, 30)),
+        ("crops this rabi", date(2025, 11, 1), date(2026, 4, 30)),
+        # Relative to today.
+        ("flooding in Kochi last month", date(2026, 9, 1), date(2026, 9, 30)),
+        ("vegetation in the past 3 months", date(2026, 7, 28), TODAY),
+        ("water in the last 120 days", date(2026, 6, 28), TODAY),
+        ("built-up area this year", date(2026, 1, 1), TODAY),
+        ("what changed last year", date(2025, 1, 1), date(2025, 12, 31)),
+        ("भोपाल में पिछले साल क्या बदलाव हुआ?", date(2025, 1, 1), date(2025, 12, 31)),
+    ],
+)
+def test_days_seasons_and_relative_periods_are_read(query, start, end):
+    period = extract_time_range(query, today=TODAY)
+    assert (period.start, period.end) == (start, end)
+
+
+def test_bare_winter_or_summer_is_not_a_period():
+    # "winter wheat" names a crop, not a date.
+    assert extract_time_range("winter wheat in Punjab", today=TODAY) is None
+    assert extract_time_range("summer crops", today=TODAY) is None
+
+
+def test_a_season_is_not_mistaken_for_a_place():
+    assert "Monsoon" not in extract_locations("In Monsoon 2024 near Kochi")
+
+
 # ============================================================
 # LOCATION
 # ============================================================

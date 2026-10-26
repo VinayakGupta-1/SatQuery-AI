@@ -227,6 +227,23 @@ live in memory and vanish on every restart or deploy.
 - **CI:** five jobs now, including the single image.
 - **Tests:** 754 backend (both raster backends) + 15 Vitest.
 
+## 3d. Dates and the evaluation brief (2026-10-26)
+
+- `context.py` now reads single days in every common form (`15/08/2024` day
+  first, `August 15, 2024`, `15th Aug 2024`), ISO months (`2024-08`), Indian
+  seasons (`monsoon 2024`, `kharif 2023`, `rabi 2023` = Nov 2023-Apr 2024,
+  `last monsoon`; bare "winter"/"summer" ignored) and relative periods
+  (`last month`, `past 90 days`, `this year`, `पिछले साल`). `_mentions`,
+  `extract_time_range`, `extract_periods` and `extract_context` take an
+  optional `today`; the acquisition planner passes its own.
+- Tests: **777 backend** (both raster backends) + 15 Vitest.
+- Deck slide 7 now says "a vision-language model describes" (the live site
+  uses Groq, not the fine-tuned model). Slides 1 and 16 still have
+  `[Team name]` placeholders only the user can fill.
+- `SatQuery_Project_Brief_v2.docx` (untracked, repo root) is the evaluation
+  brief; the user's proposal named PostGIS, scikit-learn and Mapbox, none of
+  which the code uses.
+
 ## 4. How to run things
 
 ```bash

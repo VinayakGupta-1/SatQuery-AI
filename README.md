@@ -278,7 +278,7 @@ Every answer comes back grounded:
 
 ```bash
 cd backend
-python -m pytest                                   # 754 tests
+python -m pytest                                   # 777 tests
 SATQUERY_RASTER_BACKEND=builtin python -m pytest   # same suite, no GDAL
 # PowerShell: $env:SATQUERY_RASTER_BACKEND="builtin"; python -m pytest
 ```
@@ -300,6 +300,16 @@ push and pull request.
 
 Questions can be asked in Hindi as well as English; month names, places and
 the analysis are read from the Hindi text even without a hosted model.
+
+Dates are always read by deterministic code, never by a model
+(`backend/app/controller/task_understanding/context.py`): days
+(`2024-08-15`, `15/08/2024` day first, `August 15, 2024`), months
+(`Aug 2024`, `2024-08`, Hindi month names), years, ranges (`between ... and
+...`, `since 2020`, `before 2019`), Indian seasons (`monsoon 2024`,
+`kharif 2023`, `rabi 2023` = November 2023 to April 2024, `last monsoon`) and
+relative periods (`last month`, `past 90 days`, `this year`, `पिछले साल`).
+Fetched imagery reaches back to 2017 (Sentinel-2) and October 2014
+(Sentinel-1); uploads can be of any date their files record.
 
 ## Layout
 
