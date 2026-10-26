@@ -41,6 +41,22 @@ in 10 m pixels — and SatQuery says why instead of guessing.
 
 ## Quick start
 
+**On a Windows laptop, with one double-click:** `start-satquery.cmd` checks
+the tools, the settings (printing only OK or NOT OK, never a key), and the
+port. It rebuilds the workspace if it changed, then starts one server for the
+workspace and the API at http://localhost:7860, and opens the browser.
+Ctrl+C in its window stops it. Logs go to `backend/run-logs/`. Options, run
+as `.\start-satquery.ps1 <option>` in PowerShell:
+
+| Option | What it does |
+|---|---|
+| `-Setup` | First time on a laptop: creates `backend\.venv` and installs the Python and Node packages |
+| `-FineTuned` | Also starts the fine-tuned Qwen2-VL on the NVIDIA GPU (4-bit, see [finetune/](finetune/README.md)) and answers vision questions with it instead of Groq |
+| `-Accounts` | Keeps Supabase sign-in on (off by default, as on the public site) |
+| `-Rebuild` | Rebuilds the workspace even if it looks up to date |
+| `-NoBrowser` | Does not open the browser |
+| `-Port <n>` | Serves on another port (default 7860) |
+
 **With Docker** (nothing else to install):
 
 ```bash

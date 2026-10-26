@@ -33,3 +33,6 @@ models/
 # Private evaluation prep (Word documents and their lock files)
 SatQuery_Project_Brief*.docx
 ~$*.docx
+
+# Logs from start-satquery.ps1
+backend/run-logs/
