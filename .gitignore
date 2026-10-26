@@ -29,3 +29,7 @@ backend/evaluation_reports/
 work/
 models/
 *.tif.aux.xml
+
+# Private evaluation prep (Word documents and their lock files)
+SatQuery_Project_Brief*.docx
+~$*.docx
